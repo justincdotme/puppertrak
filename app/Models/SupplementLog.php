@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\AppLocalDatetime;
 use Database\Factories\SupplementLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -39,7 +40,7 @@ class SupplementLog extends Model
     {
         return [
             'amount_given' => 'decimal:2',
-            'given_at'     => 'datetime',
+            'given_at'     => AppLocalDatetime::class,
             'was_skipped'  => 'boolean',
         ];
     }

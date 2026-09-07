@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\AppLocalDatetime;
 use Database\Factories\HealthNoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +31,7 @@ class HealthNote extends Model
     protected function casts(): array
     {
         return [
-            'noted_at' => 'datetime',
+            'noted_at' => AppLocalDatetime::class,
         ];
     }
 }
