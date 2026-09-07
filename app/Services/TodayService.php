@@ -27,10 +27,8 @@ class TodayService
         $variance  = CarbonInterval::minutes((int) config('puppertrak.reminder_variance_minutes'));
         $feedTimes = $dog->feed_times ?? [];
 
-        /** @var Carbon|null $dogCreatedAt */
-        $dogCreatedAt = $dog->created_at;
-
-        $eligibleFeedTimes = $this->eligibleTimes($feedTimes, $dogCreatedAt, 'today');
+        /** @var Carbon|null $anchor */
+        $anchor = $dog->feed_times_set_at ?? $dog->created_at;
 
         $todayStart     = now()->startOfDay();
         $yesterdayStart = now()->subDay()->startOfDay();
@@ -58,19 +56,21 @@ class TodayService
         })->values();
 
         [$feedSchedule, $feedExtras] = $this->matchToWindows(
-            $eligibleFeedTimes,
+            $feedTimes,
             $todayFeedingLogs,
             'fed_at',
             $variance,
         );
 
-        $feedScheduleEntries = $this->buildFeedingScheduleEntries($feedSchedule, $variance);
+        $feedScheduleEntries = $this->buildFeedingScheduleEntries($feedSchedule, $variance, $anchor);
         $feedExtraEntries    = $this->buildFeedingExtras($feedExtras);
-        $feedingOverdueCount = collect($feedScheduleEntries)->where('status', 'overdue')->count();
+
+        $activeEntries       = collect($feedScheduleEntries)->where('status', '!=', 'untracked');
+        $feedingOverdueCount = $activeEntries->where('status', 'overdue')->count();
 
         $feedingsOverdueAlert = $this->hasFeedingMissStreak(
             $feedTimes,
-            $dogCreatedAt,
+            $anchor,
             $feedSchedule,
             $yesterdayFeedingLogs,
             $variance,
@@ -97,10 +97,10 @@ class TodayService
                 'archived_at' => $archivedAt?->toIso8601String(),
             ],
             'feedings' => [
-                'expected' => count($eligibleFeedTimes),
-                'handled'  => collect($feedScheduleEntries)->whereIn('status', ['fed', 'skipped'])->count(),
-                'fed'      => collect($feedScheduleEntries)->where('status', 'fed')->count(),
-                'skipped'  => collect($feedScheduleEntries)->where('status', 'skipped')->count(),
+                'expected' => $activeEntries->count(),
+                'handled'  => $activeEntries->whereIn('status', ['fed', 'skipped'])->count(),
+                'fed'      => $activeEntries->where('status', 'fed')->count(),
+                'skipped'  => $activeEntries->where('status', 'skipped')->count(),
                 'overdue'  => $feedingOverdueCount,
                 'schedule' => $feedScheduleEntries,
                 'extras'   => $feedExtraEntries,
@@ -182,35 +182,36 @@ class TodayService
     }
 
     /**
-     * A scheduled time whose window predates the owning dog or assignment's
-     * creation is not a window at all - dropped before matching so it never
-     * appears in the schedule, counts, or streak checks.
+     * Filters times to those at-or-after a threshold datetime. Used for
+     * supplement eligibility (anchored to assignment created_at) and the
+     * feeding miss-streak lookback (anchored to feed_times_set_at ?? created_at).
      *
-     * @param array<int, string> $times     Scheduled HH:MM strings.
-     * @param Carbon|null        $createdAt Owning record's created_at.
-     * @param string             $day       Date prefix for Carbon::parse ('today', 'yesterday').
+     * @param array<int, string> $times Scheduled HH:MM strings.
+     * @param Carbon|null        $after Threshold datetime; times before it are excluded.
+     * @param string             $day   Date prefix for Carbon::parse ('today', 'yesterday').
      *
      * @return array<int, string>
      */
-    private function eligibleTimes(array $times, ?Carbon $createdAt, string $day): array
+    private function eligibleTimes(array $times, ?Carbon $after, string $day): array
     {
-        if ($createdAt === null) {
+        if ($after === null) {
             return $times;
         }
 
         return array_values(array_filter(
             $times,
-            fn (string $time): bool => Carbon::parse($day . ' ' . $time)->gte($createdAt),
+            fn (string $time): bool => Carbon::parse($day . ' ' . $time)->gte($after),
         ));
     }
 
     /**
      * @param array<int, array{at: Carbon, log: Model|null}> $schedule Raw schedule from matchToWindows.
      * @param CarbonInterval                                 $variance Window half-width.
+     * @param Carbon|null                                    $anchor   Feed-time anchor; pre-anchor same-day unsatisfied windows are untracked.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildFeedingScheduleEntries(array $schedule, CarbonInterval $variance): array
+    private function buildFeedingScheduleEntries(array $schedule, CarbonInterval $variance, ?Carbon $anchor): array
     {
         $entries = [];
 
@@ -219,9 +220,13 @@ class TodayService
             $log = $entry['log'];
             $at  = $entry['at'];
 
+            $preAnchorSameDay = $anchor !== null
+                && $at->lt($anchor)
+                && $at->isSameDay($anchor);
+
             $entries[] = [
                 'time'        => $at->format('H:i'),
-                'status'      => $this->deriveFeedingStatus($log, $at, $variance),
+                'status'      => $this->deriveFeedingStatus($log, $at, $variance, $preAnchorSameDay),
                 'log_id'      => $log?->id,
                 'logged_at'   => $this->formatTimestamp($log?->fed_at),
                 'amount'      => $log?->amount,
@@ -260,16 +265,21 @@ class TodayService
     }
 
     /**
-     * @param FeedingLog|null $log      Matched log or null.
-     * @param Carbon          $at       Scheduled time.
-     * @param CarbonInterval  $variance Window half-width.
+     * @param FeedingLog|null $log              Matched log or null.
+     * @param Carbon          $at               Scheduled time.
+     * @param CarbonInterval  $variance         Window half-width.
+     * @param boolean         $preAnchorSameDay Whether this window precedes the anchor on the same calendar day.
      *
      * @return string
      */
-    private function deriveFeedingStatus(?FeedingLog $log, Carbon $at, CarbonInterval $variance): string
+    private function deriveFeedingStatus(?FeedingLog $log, Carbon $at, CarbonInterval $variance, bool $preAnchorSameDay = false): string
     {
         if ($log !== null) {
             return ($log->was_skipped || (float) $log->amount === 0.0) ? 'skipped' : 'fed';
+        }
+
+        if ($preAnchorSameDay) {
+            return 'untracked';
         }
 
         return now()->gt($at->copy()->add($variance)) ? 'overdue' : 'upcoming';
@@ -277,11 +287,12 @@ class TodayService
 
     /**
      * True when the two most recently closed eligible feeding windows (across
-     * yesterday and today) are both unsatisfied.
+     * yesterday and today) are both unsatisfied. Only windows at-or-after the
+     * anchor participate; pre-anchor windows are excluded.
      *
      * @param array<int, string>                             $feedTimes     Scheduled HH:MM strings.
-     * @param Carbon|null                                    $createdAt     Dog's created_at timestamp.
-     * @param array<int, array{at: Carbon, log: Model|null}> $todaySchedule Today's matched windows from matchToWindows.
+     * @param Carbon|null                                    $anchor        Feed-time anchor (feed_times_set_at ?? created_at).
+     * @param array<int, array{at: Carbon, log: Model|null}> $todaySchedule Today's matched windows from matchToWindows (all times).
      * @param Collection<int, FeedingLog>                    $yesterdayLogs Yesterday's feeding logs.
      * @param CarbonInterval                                 $variance      Window half-width.
      *
@@ -289,7 +300,7 @@ class TodayService
      */
     private function hasFeedingMissStreak(
         array $feedTimes,
-        ?Carbon $createdAt,
+        ?Carbon $anchor,
         array $todaySchedule,
         Collection $yesterdayLogs,
         CarbonInterval $variance,
@@ -299,14 +310,21 @@ class TodayService
         }
 
         [$yesterdaySchedule] = $this->matchToWindows(
-            $this->eligibleTimes($feedTimes, $createdAt, 'yesterday'),
+            $this->eligibleTimes($feedTimes, $anchor, 'yesterday'),
             $yesterdayLogs,
             'fed_at',
             $variance,
             'yesterday',
         );
 
-        $allWindows = array_merge($yesterdaySchedule, $todaySchedule);
+        $todayEligible = $anchor === null
+            ? $todaySchedule
+            : array_values(array_filter(
+                $todaySchedule,
+                fn (array $entry): bool => $entry['at']->gte($anchor),
+            ));
+
+        $allWindows = array_merge($yesterdaySchedule, $todayEligible);
 
         $closedEligible = collect($allWindows)
             ->filter(function (array $entry) use ($variance): bool {
