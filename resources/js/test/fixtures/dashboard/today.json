@@ -28,6 +28,16 @@
             "skip_reason": null
           },
           {
+            "time": "12:30",
+            "status": "untracked",
+            "log_id": null,
+            "logged_at": null,
+            "amount": null,
+            "unit": null,
+            "food_name": null,
+            "skip_reason": null
+          },
+          {
             "time": "18:00",
             "status": "upcoming",
             "log_id": null,

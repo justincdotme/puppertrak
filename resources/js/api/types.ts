@@ -128,7 +128,7 @@ export interface DogTodaySummary {
   archived_at: string | null
 }
 
-export type FeedingScheduleStatus = 'fed' | 'skipped' | 'overdue' | 'upcoming'
+export type FeedingScheduleStatus = 'fed' | 'skipped' | 'overdue' | 'upcoming' | 'untracked'
 
 export interface FeedingScheduleEntry {
   time: string
