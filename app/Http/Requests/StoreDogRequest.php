@@ -41,6 +41,7 @@ class StoreDogRequest extends FormRequest
             'notes'                 => ['nullable', 'string'],
             'feed_times'            => ['nullable', 'array', 'max:10'],
             'feed_times.*'          => ['date_format:H:i'],
+            'feeding_instructions'  => ['nullable', 'string'],
         ];
     }
 }

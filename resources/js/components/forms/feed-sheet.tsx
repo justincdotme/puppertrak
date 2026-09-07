@@ -114,6 +114,10 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
         {subtitle && <SheetDescription>{subtitle}</SheetDescription>}
       </SheetHeader>
 
+      {dogToday?.dog.feeding_instructions && (
+        <p className="text-sm text-muted-foreground">{dogToday.dog.feeding_instructions}</p>
+      )}
+
       <div className="grid gap-2">
         <Label>Food</Label>
         <Select value={foodId} onValueChange={setFoodId}>

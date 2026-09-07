@@ -8,6 +8,7 @@
         "breed": "Golden Retriever",
         "weight": "62.00",
         "weight_unit": "lb",
+        "feeding_instructions": null,
         "archived_at": null
       },
       "feedings": {
@@ -113,6 +114,7 @@
         "breed": "French Bulldog",
         "weight": "24.00",
         "weight_unit": "lb",
+        "feeding_instructions": null,
         "archived_at": null
       },
       "feedings": {

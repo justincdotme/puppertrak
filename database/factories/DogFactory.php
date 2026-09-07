@@ -47,6 +47,7 @@ class DogFactory extends Factory
             'owner_phone'           => fake()->phoneNumber(),
             'notes'                 => null,
             'feed_times'            => ['07:00', '18:00'],
+            'feeding_instructions'  => null,
             'archived_at'           => null,
         ];
     }

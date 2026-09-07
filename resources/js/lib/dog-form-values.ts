@@ -26,6 +26,7 @@ export interface DogFormValues {
   owner_phone: string
   notes: string
   feed_times: string[]
+  feeding_instructions: string
   food_id: string
   amount: string
   unit: string
@@ -59,6 +60,7 @@ export function dogToFormValues(dog: Dog): DogFormValues {
     owner_phone: dog.owner_phone ?? '',
     notes: dog.notes ?? '',
     feed_times: dog.feed_times ?? [],
+    feeding_instructions: dog.feeding_instructions ?? '',
     food_id: firstPlan ? String(firstPlan.food_id) : '',
     amount: firstPlan?.amount ?? '',
     unit: firstPlan?.unit ?? '',

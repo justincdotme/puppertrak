@@ -29,6 +29,7 @@
     "owner_phone": "555-0120",
     "notes": "Visited for two weeks last spring.",
     "feed_times": ["07:00", "17:00"],
+    "feeding_instructions": null,
     "archived_at": null
   }
 }

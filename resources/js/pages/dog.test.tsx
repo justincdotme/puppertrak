@@ -74,6 +74,14 @@ describe('DogPage', () => {
     })
   })
 
+  it('shows the feeding instructions when present', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Grind up the kibble and mix in warm water.')).toBeInTheDocument()
+    })
+  })
+
   it('renders an untracked feeding window dimmed with a not tracked annotation', async () => {
     renderPage()
 

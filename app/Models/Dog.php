@@ -40,6 +40,7 @@ use Illuminate\Support\Str;
     'notes',
     'meta',
     'feed_times',
+    'feeding_instructions',
     'archived_at',
 ])]
 class Dog extends Model
