@@ -7,8 +7,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { FeedSheet } from './feed-sheet'
 import { NotificationProvider } from '@/components/app/notifications'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import type { FeedingPlan } from '@/api/types'
 
-function renderSheet(props: { open: boolean; onOpenChange?: (open: boolean) => void }) {
+function renderSheet(props: {
+  open: boolean
+  onOpenChange?: (open: boolean) => void
+  plans?: FeedingPlan[]
+}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     React.createElement(
@@ -27,6 +32,7 @@ function renderSheet(props: { open: boolean; onOpenChange?: (open: boolean) => v
               open: props.open,
               onOpenChange: props.onOpenChange ?? vi.fn(),
               dogSlug: 'maple',
+              plans: props.plans,
             })
           )
         )
@@ -70,5 +76,36 @@ describe('FeedSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
 
     expect(screen.getByText(/Add a short reason/)).toBeInTheDocument()
+  })
+
+  it('disables Confirm until a unit is set when not skipping', async () => {
+    renderSheet({ open: true })
+
+    await waitFor(() => {
+      expect(screen.getByText('Log a feeding')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled()
+  })
+
+  it('enables Confirm once a feeding plan supplies a default unit', async () => {
+    renderSheet({
+      open: true,
+      plans: [
+        {
+          id: 1,
+          dog_id: 1,
+          food_id: 1,
+          food_name: 'Purina Pro Plan Sensitive Skin',
+          amount: '1.00',
+          unit: 'cup',
+          notes: null,
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirm' })).not.toBeDisabled()
+    })
   })
 })

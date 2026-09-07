@@ -32,8 +32,8 @@ export interface Dog {
   notes: string | null
   feed_times: string[] | null
   archived_at: string | null
-  // Present on `GET /dogs/{slug}` only, where the show endpoint eager-loads
-  // both relations.
+  // Present when the controller eager-loads the relations (index and show
+  // endpoints both do); optional here for payloads that don't.
   feeding_plans?: FeedingPlan[]
   dog_supplements?: DogSupplement[]
 }

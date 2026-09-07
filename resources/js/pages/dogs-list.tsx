@@ -18,6 +18,7 @@ import type { DogToday } from '@/api/types'
 export function DogsListPage() {
   const navigate = useNavigate()
   const { data: dashboard } = useDashboard()
+  const { data: dogs } = useDogs()
   const { data: archivedDogs } = useDogs(true)
   const unarchive = useUnarchiveDog()
   const { notify } = useNotification()
@@ -190,6 +191,7 @@ export function DogsListPage() {
         }}
         dogSlug={feedDog?.dog.slug ?? ''}
         dogToday={feedDog ?? undefined}
+        plans={dogs?.find(d => d.slug === feedDog?.dog.slug)?.feeding_plans}
       />
       <SupplementSheet
         open={!!suppDog}
