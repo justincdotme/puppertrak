@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import list from '../fixtures/dogs/list.json'
 import archived from '../fixtures/dogs/archived.json'
 import detailMaple from '../fixtures/dogs/detail-maple.json'
+import detailOdie from '../fixtures/dogs/detail-odie.json'
 import created from '../fixtures/dogs/created.json'
 import updated from '../fixtures/dogs/updated.json'
 import archiveResponse from '../fixtures/dogs/archive-response.json'
@@ -9,6 +10,7 @@ import unarchiveResponse from '../fixtures/dogs/unarchive-response.json'
 
 const detailBySlug: Record<string, object> = {
   maple: detailMaple,
+  odie: detailOdie,
 }
 
 export const dogHandlers = [

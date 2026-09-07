@@ -29,7 +29,9 @@ final class DogController extends Controller
             ? Dog::query()->whereNotNull('archived_at')
             : Dog::active();
 
-        return DogResource::collection($query->get());
+        return DogResource::collection(
+            $query->with(['feedingPlans.food', 'dogSupplements.supplement'])->get(),
+        );
     }
 
     /**

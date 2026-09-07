@@ -1,0 +1,46 @@
+{
+  "data": {
+    "id": 5,
+    "slug": "odie",
+    "name": "Odie",
+    "breed": "Beagle",
+    "date_of_birth": null,
+    "age_years": 4,
+    "age": 4,
+    "sex": "male",
+    "is_neutered_or_spayed": true,
+    "weight": "25.00",
+    "weight_unit": "lb",
+    "color_markings": null,
+    "microchip_number": null,
+    "rabies_vaccine_date": null,
+    "da2pp_vaccine_date": null,
+    "other_vaccines": null,
+    "allergies": null,
+    "medical_conditions": null,
+    "current_medications": null,
+    "primary_vet_name": null,
+    "primary_vet_phone": null,
+    "primary_vet_address": null,
+    "emergency_vet_name": null,
+    "emergency_vet_phone": null,
+    "emergency_vet_address": null,
+    "owner_name": null,
+    "owner_phone": null,
+    "notes": null,
+    "feed_times": ["07:00", "18:00"],
+    "archived_at": null,
+    "feeding_plans": [
+      {
+        "id": 1,
+        "dog_id": 5,
+        "food_id": 1,
+        "food_name": "Purina Pro Plan Sensitive Skin",
+        "amount": "21.00",
+        "unit": "g",
+        "notes": null
+      }
+    ],
+    "dog_supplements": []
+  }
+}

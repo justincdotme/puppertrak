@@ -38,6 +38,7 @@ use Illuminate\Support\Str;
     'owner_name',
     'owner_phone',
     'notes',
+    'meta',
     'feed_times',
     'archived_at',
 ])]
@@ -146,6 +147,7 @@ class Dog extends Model
             'weight'                => 'decimal:2',
             'rabies_vaccine_date'   => 'date',
             'da2pp_vaccine_date'    => 'date',
+            'meta'                  => 'array',
             'feed_times'            => 'array',
             'archived_at'           => 'datetime',
         ];

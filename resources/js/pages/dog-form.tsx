@@ -34,38 +34,45 @@ import {
 } from '@/hooks/use-dogs'
 import { useFoods } from '@/hooks/use-foods'
 import { useCreateFeedingPlan, useUpdateFeedingPlan } from '@/hooks/use-feeding-plans'
+import { createFeedingPlan } from '@/api/feeding-plans'
 import { dogToFormValues } from '@/lib/dog-form-values'
+import type { Dog, Food } from '@/api/types'
 
-const schema = z.object({
-  name: z.string().min(1, 'A name is required.'),
-  breed: z.string().optional().default(''),
-  date_of_birth: z.string().optional().default(''),
-  age_years: z.string().optional().default(''),
-  sex: z.enum(['female', 'male', '']),
-  is_neutered_or_spayed: z.boolean(),
-  weight: z.string().optional().default(''),
-  weight_unit: z.enum(['lb', 'kg']),
-  color_markings: z.string().optional().default(''),
-  microchip_number: z.string().optional().default(''),
-  rabies_vaccine_date: z.string().optional().default(''),
-  da2pp_vaccine_date: z.string().optional().default(''),
-  other_vaccines: z.string().optional().default(''),
-  allergies: z.string().optional().default(''),
-  medical_conditions: z.string().optional().default(''),
-  primary_vet_name: z.string().optional().default(''),
-  primary_vet_phone: z.string().optional().default(''),
-  primary_vet_address: z.string().optional().default(''),
-  emergency_vet_name: z.string().optional().default(''),
-  emergency_vet_phone: z.string().optional().default(''),
-  emergency_vet_address: z.string().optional().default(''),
-  owner_name: z.string().optional().default(''),
-  owner_phone: z.string().optional().default(''),
-  notes: z.string().optional().default(''),
-  feed_times: z.array(z.string()),
-  food_id: z.string().optional().default(''),
-  amount: z.string().optional().default(''),
-  unit: z.string().optional().default('cup'),
-})
+const schema = z
+  .object({
+    name: z.string().min(1, 'A name is required.'),
+    breed: z.string().optional().default(''),
+    date_of_birth: z.string().optional().default(''),
+    age_years: z.string().optional().default(''),
+    sex: z.enum(['female', 'male', '']),
+    is_neutered_or_spayed: z.boolean(),
+    weight: z.string().optional().default(''),
+    weight_unit: z.enum(['lb', 'kg']),
+    color_markings: z.string().optional().default(''),
+    microchip_number: z.string().optional().default(''),
+    rabies_vaccine_date: z.string().optional().default(''),
+    da2pp_vaccine_date: z.string().optional().default(''),
+    other_vaccines: z.string().optional().default(''),
+    allergies: z.string().optional().default(''),
+    medical_conditions: z.string().optional().default(''),
+    primary_vet_name: z.string().optional().default(''),
+    primary_vet_phone: z.string().optional().default(''),
+    primary_vet_address: z.string().optional().default(''),
+    emergency_vet_name: z.string().optional().default(''),
+    emergency_vet_phone: z.string().optional().default(''),
+    emergency_vet_address: z.string().optional().default(''),
+    owner_name: z.string().optional().default(''),
+    owner_phone: z.string().optional().default(''),
+    notes: z.string().optional().default(''),
+    feed_times: z.array(z.string()),
+    food_id: z.string().optional().default(''),
+    amount: z.string().optional().default(''),
+    unit: z.string().optional().default(''),
+  })
+  .refine(data => !data.food_id || data.unit, {
+    message: 'A unit is required with a feeding plan.',
+    path: ['unit'],
+  })
 
 type DogFormValues = z.infer<typeof schema>
 
@@ -97,7 +104,7 @@ const EMPTY_VALUES: DogFormValues = {
   feed_times: [],
   food_id: '',
   amount: '',
-  unit: 'cup',
+  unit: '',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -113,27 +120,37 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function DogFormPage() {
   const { slug } = useParams<{ slug: string }>()
-  const navigate = useNavigate()
-  const { notify } = useNotification()
-
   const isEdit = !!slug
   const { data: existing, isLoading } = useDog(slug ?? '')
-  const { data: foods } = useFoods()
-  const createDog = useCreateDog()
-  const updateDog = useUpdateDog(slug ?? '')
-  const archiveDog = useArchiveDog()
-  const unarchiveDog = useUnarchiveDog()
-  const createPlan = useCreateFeedingPlan(slug ?? '')
-  const updatePlan = useUpdateFeedingPlan(slug ?? '', existing?.feeding_plans?.[0]?.id ?? 0)
-
-  const form = useForm<DogFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: EMPTY_VALUES,
-    values: isEdit && existing ? dogToFormValues(existing) : undefined,
-  })
 
   if (isEdit && isLoading) return null
   if (isEdit && !existing) return <Navigate to="/" replace />
+
+  return <DogFormInner key={slug ?? 'new'} existing={existing} />
+}
+
+interface DogFormInnerProps {
+  existing?: Dog
+}
+
+function DogFormInner({ existing }: DogFormInnerProps) {
+  const navigate = useNavigate()
+  const { notify } = useNotification()
+  const { data: foods } = useFoods()
+
+  const isEdit = !!existing
+  const slug = existing?.slug ?? ''
+  const createDog = useCreateDog()
+  const updateDog = useUpdateDog(slug)
+  const archiveDog = useArchiveDog()
+  const unarchiveDog = useUnarchiveDog()
+  const createPlan = useCreateFeedingPlan(slug)
+  const updatePlan = useUpdateFeedingPlan(slug, existing?.feeding_plans?.[0]?.id ?? 0)
+
+  const form = useForm<DogFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: existing ? dogToFormValues(existing) : EMPTY_VALUES,
+  })
 
   function toDogPayload(values: DogFormValues) {
     return {
@@ -188,8 +205,13 @@ export function DogFormPage() {
       createDog.mutate(dogPayload, {
         onSuccess: created => {
           if (planPayload) {
-            // The slug comes from the created dog
-            void created
+            createFeedingPlan(created.slug, planPayload)
+              .then(() => navigate('/'))
+              .catch(() => {
+                notify('Dog saved but the feeding plan failed.')
+                navigate('/')
+              })
+            return
           }
           navigate('/')
         },
@@ -275,7 +297,7 @@ export function DogFormPage() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <AppHeader
-          title={isEdit ? 'Edit ' + (existing?.name ?? '') : 'Add a dog'}
+          title={isEdit ? 'Edit ' + existing.name : 'Add a dog'}
           subtitle={
             isEdit
               ? 'Changes show on the dog page right away.'
@@ -292,22 +314,26 @@ export function DogFormPage() {
             <FormField
               control={form.control}
               name="sex"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sex</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const label =
+                  field.value === 'female' ? 'Female' : field.value === 'male' ? 'Male' : undefined
+                return (
+                  <FormItem>
+                    <FormLabel>Sex</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select">{label}</SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )
+              }}
             />
             <FormField
               control={form.control}
@@ -332,7 +358,7 @@ export function DogFormPage() {
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue>{field.value || undefined}</SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -363,31 +389,7 @@ export function DogFormPage() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="food_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Food</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pick a food" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {(foods ?? []).map(f => (
-                        <SelectItem key={f.id} value={String(f.id)}>
-                          {f.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>Foods live in the Pantry catalog.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FoodSelectField foods={foods} control={form.control} />
             <div className="grid grid-cols-[1fr_7rem] gap-2">
               {text('amount', 'Amount per meal', '1')}
               <FormField
@@ -399,7 +401,9 @@ export function DogFormPage() {
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Pick a unit">
+                            {field.value || undefined}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -409,6 +413,7 @@ export function DogFormPage() {
                         <SelectItem value="scoop">scoop</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -500,5 +505,44 @@ export function DogFormPage() {
         </div>
       </form>
     </Form>
+  )
+}
+
+function FoodSelectField({
+  foods,
+  control,
+}: {
+  foods?: Food[]
+  control: ReturnType<typeof useForm<DogFormValues>>['control']
+}) {
+  return (
+    <FormField
+      control={control}
+      name="food_id"
+      render={({ field }) => {
+        const selectedFoodName = foods?.find(f => String(f.id) === field.value)?.name
+        return (
+          <FormItem>
+            <FormLabel>Food</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a food">{selectedFoodName}</SelectValue>
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {(foods ?? []).map(f => (
+                  <SelectItem key={f.id} value={String(f.id)}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormDescription>Foods live in the Pantry catalog.</FormDescription>
+            <FormMessage />
+          </FormItem>
+        )
+      }}
+    />
   )
 }

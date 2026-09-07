@@ -61,6 +61,6 @@ export function dogToFormValues(dog: Dog): DogFormValues {
     feed_times: dog.feed_times ?? [],
     food_id: firstPlan ? String(firstPlan.food_id) : '',
     amount: firstPlan?.amount ?? '',
-    unit: firstPlan?.unit ?? 'cup',
+    unit: firstPlan?.unit ?? '',
   }
 }

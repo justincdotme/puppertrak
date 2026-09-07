@@ -49,13 +49,13 @@ function FeedingPlanBody({ food, onClose }: { food: Food; onClose: () => void })
 
   const [dogSlug, setDogSlug] = useState(dogs?.[0]?.slug ?? '')
   const [amount, setAmount] = useState('')
-  const [unit, setUnit] = useState('cup')
+  const [unit, setUnit] = useState('')
   const [notes, setNotes] = useState('')
 
   const createPlan = useCreateFeedingPlan(dogSlug)
 
   function submit() {
-    if (!dogSlug || !amount) return
+    if (!dogSlug || !amount || !unit) return
 
     createPlan.mutate(
       {
@@ -113,7 +113,7 @@ function FeedingPlanBody({ food, onClose }: { food: Food; onClose: () => void })
           <Label>Unit</Label>
           <Select value={unit} onValueChange={setUnit}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Pick a unit">{unit || undefined}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {UNITS.map(u => (
@@ -145,7 +145,7 @@ function FeedingPlanBody({ food, onClose }: { food: Food; onClose: () => void })
           size="xl"
           className="flex-1"
           onClick={submit}
-          disabled={createPlan.isPending || !dogSlug || !amount}
+          disabled={createPlan.isPending || !dogSlug || !amount || !unit}
         >
           Assign
         </Button>

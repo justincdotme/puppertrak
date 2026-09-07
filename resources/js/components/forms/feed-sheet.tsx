@@ -57,7 +57,7 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
     log ? String(log.food_id ?? '') : String(firstPlan?.food_id ?? '')
   )
   const [amount, setAmount] = useState(log?.amount ?? firstPlan?.amount ?? '')
-  const [unit, setUnit] = useState(log?.unit ?? firstPlan?.unit ?? 'cup')
+  const [unit, setUnit] = useState(log?.unit ?? firstPlan?.unit ?? '')
   const [fedAt, setFedAt] = useState(nowLocal())
   const [skipped, setSkipped] = useState(log?.was_skipped ?? false)
   const [reason, setReason] = useState(log?.skip_reason ?? '')
