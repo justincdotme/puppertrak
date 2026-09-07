@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "dog_id": 1,
+      "food_id": 1,
+      "food_name": "Purina Pro Plan Sensitive Skin",
+      "amount": "1.00",
+      "unit": "cup",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "dog_id": 1,
+      "food_id": 3,
+      "food_name": "Ziwi Peak Air-Dried",
+      "amount": "0.33",
+      "unit": "cup",
+      "notes": "Topper mixed into the morning meal"
+    }
+  ]
+}

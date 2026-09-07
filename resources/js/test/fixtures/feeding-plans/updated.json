@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": 1,
+    "dog_id": 1,
+    "food_id": 1,
+    "food_name": "Purina Pro Plan Sensitive Skin",
+    "amount": "1.25",
+    "unit": "cup",
+    "notes": "Vet bumped the portion up slightly."
+  }
+}

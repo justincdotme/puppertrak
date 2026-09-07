@@ -1,0 +1,6 @@
+{
+  "message": "The skip reason field is required when amount is 0.",
+  "errors": {
+    "skip_reason": ["The skip reason field is required when amount is 0."]
+  }
+}

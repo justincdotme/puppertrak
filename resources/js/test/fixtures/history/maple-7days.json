@@ -1,0 +1,92 @@
+{
+  "data": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "type": "feeding",
+          "id": 5,
+          "dog_id": 1,
+          "food_id": 1,
+          "food_name": "Purina Pro Plan Sensitive Skin",
+          "amount": "1.00",
+          "unit": "cup",
+          "fed_at": "2026-09-07T07:05:00-07:00",
+          "was_skipped": false,
+          "skip_reason": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "date": "2026-09-06",
+      "entries": [
+        {
+          "type": "supplement",
+          "id": 2,
+          "dog_id": 1,
+          "dog_supplement_id": 2,
+          "supplement_name": "Cosequin",
+          "amount_given": "1.00",
+          "unit": "chew",
+          "given_at": "2026-09-06T18:10:00-07:00",
+          "was_skipped": false,
+          "skip_reason": null,
+          "notes": null
+        },
+        {
+          "type": "feeding",
+          "id": 2,
+          "dog_id": 1,
+          "food_id": null,
+          "food_name": null,
+          "amount": "0.00",
+          "unit": "cup",
+          "fed_at": "2026-09-06T18:10:00-07:00",
+          "was_skipped": true,
+          "skip_reason": "wouldn't eat",
+          "notes": null
+        },
+        {
+          "type": "supplement",
+          "id": 3,
+          "dog_id": 1,
+          "dog_supplement_id": 3,
+          "supplement_name": "FortiFlora",
+          "amount_given": "1.00",
+          "unit": "sachet",
+          "given_at": "2026-09-06T07:35:00-07:00",
+          "was_skipped": false,
+          "skip_reason": null,
+          "notes": null
+        },
+        {
+          "type": "supplement",
+          "id": 1,
+          "dog_id": 1,
+          "dog_supplement_id": 1,
+          "supplement_name": "Fish oil",
+          "amount_given": "1.00",
+          "unit": "pump",
+          "given_at": "2026-09-06T07:05:00-07:00",
+          "was_skipped": false,
+          "skip_reason": null,
+          "notes": null
+        },
+        {
+          "type": "feeding",
+          "id": 1,
+          "dog_id": 1,
+          "food_id": 1,
+          "food_name": "Purina Pro Plan Sensitive Skin",
+          "amount": "1.00",
+          "unit": "cup",
+          "fed_at": "2026-09-06T07:05:00-07:00",
+          "was_skipped": false,
+          "skip_reason": null,
+          "notes": null
+        }
+      ]
+    }
+  ]
+}
