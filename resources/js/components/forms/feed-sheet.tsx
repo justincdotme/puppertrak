@@ -100,7 +100,7 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
   }
 
   const subtitle = dogToday
-    ? `${dogToday.dog.name} — ${dogToday.feedings.handled} of ${dogToday.feedings.expected} today`
+    ? `${dogToday.dog.name} — ${dogToday.feedings.fed} of ${dogToday.feedings.expected} today`
     : undefined
 
   return (

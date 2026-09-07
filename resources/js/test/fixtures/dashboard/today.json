@@ -117,9 +117,9 @@
       },
       "feedings": {
         "expected": 2,
-        "handled": 0,
+        "handled": 1,
         "fed": 0,
-        "skipped": 0,
+        "skipped": 1,
         "overdue": 1,
         "schedule": [
           {
@@ -134,13 +134,13 @@
           },
           {
             "time": "18:30",
-            "status": "upcoming",
-            "log_id": null,
-            "logged_at": null,
-            "amount": null,
-            "unit": null,
-            "food_name": null,
-            "skip_reason": null
+            "status": "skipped",
+            "log_id": 6,
+            "logged_at": "2026-09-07T18:28:00-07:00",
+            "amount": "0.00",
+            "unit": "cup",
+            "food_name": "Wellness CORE Small Breed",
+            "skip_reason": "Not hungry"
           }
         ],
         "extras": []

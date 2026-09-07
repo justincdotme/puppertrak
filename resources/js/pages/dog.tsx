@@ -167,7 +167,7 @@ export function DogPage() {
             <SectionTitle
               action={
                 <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                  {today.feedings.handled} of {today.feedings.expected} today
+                  {today.feedings.fed} of {today.feedings.expected} today
                 </span>
               }
             >

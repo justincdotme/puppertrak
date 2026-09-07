@@ -59,4 +59,13 @@ describe('DogsListPage', () => {
       expect(screen.getByText('Biscuit')).toBeInTheDocument()
     })
   })
+
+  it('shows Biscuit as 0 of 2 fed even though a feeding was skipped', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('0 of 2')).toBeInTheDocument()
+      expect(screen.getByText('1 skipped')).toBeInTheDocument()
+    })
+  })
 })

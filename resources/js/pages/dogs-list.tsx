@@ -95,7 +95,7 @@ export function DogsListPage() {
                       variant={d.feedings.overdue > 0 ? 'warning' : 'success'}
                       className="whitespace-nowrap"
                     >
-                      {d.feedings.handled} of {d.feedings.expected}
+                      {d.feedings.fed} of {d.feedings.expected}
                     </Badge>
                     {d.feedings.skipped > 0 && (
                       <Badge variant="warning" className="whitespace-nowrap">
