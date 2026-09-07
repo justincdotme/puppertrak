@@ -1,0 +1,152 @@
+{
+  "data": [
+    {
+      "dog": {
+        "id": 1,
+        "slug": "maple",
+        "name": "Maple",
+        "breed": "Golden Retriever",
+        "weight": "62.00",
+        "weight_unit": "lb",
+        "archived_at": null
+      },
+      "feedings": {
+        "expected": 2,
+        "handled": 1,
+        "fed": 1,
+        "skipped": 0,
+        "overdue": 0,
+        "schedule": [
+          {
+            "time": "07:00",
+            "status": "fed",
+            "log_id": 5,
+            "logged_at": "2026-09-07T07:05:00-07:00",
+            "amount": "1.00",
+            "unit": "cup",
+            "food_name": "Purina Pro Plan Sensitive Skin",
+            "skip_reason": null
+          },
+          {
+            "time": "18:00",
+            "status": "upcoming",
+            "log_id": null,
+            "logged_at": null,
+            "amount": null,
+            "unit": null,
+            "food_name": null,
+            "skip_reason": null
+          }
+        ],
+        "extras": []
+      },
+      "supplements": {
+        "expected": 3,
+        "handled": 2,
+        "overdue": 0,
+        "schedule": [
+          {
+            "dog_supplement_id": 1,
+            "supplement_name": "Fish oil",
+            "dose": "1.00",
+            "unit": "pump",
+            "time": "07:00",
+            "status": "fed",
+            "log_id": 1,
+            "logged_at": "2026-09-07T07:05:00-07:00",
+            "skip_reason": null
+          },
+          {
+            "dog_supplement_id": 2,
+            "supplement_name": "Cosequin",
+            "dose": "1.00",
+            "unit": "chew",
+            "time": "18:00",
+            "status": "upcoming",
+            "log_id": null,
+            "logged_at": null,
+            "skip_reason": null
+          },
+          {
+            "dog_supplement_id": 3,
+            "supplement_name": "FortiFlora",
+            "dose": "1.00",
+            "unit": "sachet",
+            "time": "07:30",
+            "status": "fed",
+            "log_id": 3,
+            "logged_at": "2026-09-07T07:35:00-07:00",
+            "skip_reason": null
+          }
+        ],
+        "as_needed": [
+          {
+            "dog_supplement_id": 4,
+            "supplement_name": "Carprofen (Rimadyl) 75 mg",
+            "dose": "1.00",
+            "unit": "tablet",
+            "logs_today": []
+          }
+        ]
+      },
+      "alerts": {
+        "feedings_overdue": false,
+        "supplements_overdue": false
+      },
+      "health_notes_last_24h": 1
+    },
+    {
+      "dog": {
+        "id": 2,
+        "slug": "biscuit",
+        "name": "Biscuit",
+        "breed": "French Bulldog",
+        "weight": "24.00",
+        "weight_unit": "lb",
+        "archived_at": null
+      },
+      "feedings": {
+        "expected": 2,
+        "handled": 0,
+        "fed": 0,
+        "skipped": 0,
+        "overdue": 1,
+        "schedule": [
+          {
+            "time": "07:30",
+            "status": "overdue",
+            "log_id": null,
+            "logged_at": null,
+            "amount": null,
+            "unit": null,
+            "food_name": null,
+            "skip_reason": null
+          },
+          {
+            "time": "18:30",
+            "status": "upcoming",
+            "log_id": null,
+            "logged_at": null,
+            "amount": null,
+            "unit": null,
+            "food_name": null,
+            "skip_reason": null
+          }
+        ],
+        "extras": []
+      },
+      "supplements": {
+        "expected": 0,
+        "handled": 0,
+        "overdue": 0,
+        "schedule": [],
+        "as_needed": []
+      },
+      "alerts": {
+        "feedings_overdue": true,
+        "supplements_overdue": false
+      },
+      "health_notes_last_24h": 0
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "dog_id": 1,
+      "supplement_id": 1,
+      "supplement_name": "Fish oil",
+      "default_unit": "pump",
+      "dose": "1.00",
+      "unit": "pump",
+      "times": ["07:00"],
+      "notes": null
+    },
+    {
+      "id": 2,
+      "dog_id": 1,
+      "supplement_id": 2,
+      "supplement_name": "Cosequin",
+      "default_unit": "chew",
+      "dose": "1.00",
+      "unit": "chew",
+      "times": ["18:00"],
+      "notes": null
+    },
+    {
+      "id": 3,
+      "dog_id": 1,
+      "supplement_id": 3,
+      "supplement_name": "FortiFlora",
+      "default_unit": "sachet",
+      "dose": "1.00",
+      "unit": "sachet",
+      "times": ["07:30"],
+      "notes": null
+    },
+    {
+      "id": 4,
+      "dog_id": 1,
+      "supplement_id": 4,
+      "supplement_name": "Carprofen (Rimadyl) 75 mg",
+      "default_unit": "tablet",
+      "dose": "1.00",
+      "unit": "tablet",
+      "times": null,
+      "notes": null
+    }
+  ]
+}

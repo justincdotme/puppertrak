@@ -1,0 +1,55 @@
+/vendor/
+node_modules/
+npm-debug.log
+yarn-error.log
+*.log
+
+# Laravel
+public/storage
+public/hot
+storage/*.key
+.env
+.env.backup
+.env.production
+.env.*
+!.env.example
+.phpunit.result.cache
+.phpunit.cache
+
+/public/build
+/storage/pail
+
+# Claude Code
+/.claude
+/.superpowers
+/docs/superpowers
+/docs/project
+/CLAUDE.md
+AGENTS.md
+/temp
+
+# Coverage
+/coverage
+
+# Docker persistent data
+/docker/data
+
+# IDE
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.phpactor.json
+auth.json
+*.key
+*.pem
+*.crt
+Homestead.yaml
+Homestead.json
+
+# Visual check harness
+/tools/visual-check/
+
+# Project temp
+/tmp
