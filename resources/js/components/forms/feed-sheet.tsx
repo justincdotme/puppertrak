@@ -70,6 +70,10 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
       return
     }
 
+    if (!skipped && !unit) {
+      return
+    }
+
     const payload = {
       food_id: foodId ? Number(foodId) : null,
       amount: skipped ? 0 : Number(amount),
@@ -144,7 +148,7 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
           <Label>Unit</Label>
           <Select value={unit} onValueChange={setUnit}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Pick a unit">{unit || undefined}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {UNITS.map(u => (
@@ -220,7 +224,7 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, log }: FeedShee
           size="xl"
           className="flex-1"
           onClick={submit}
-          disabled={createLog.isPending || updateLog.isPending}
+          disabled={createLog.isPending || updateLog.isPending || (!skipped && !unit)}
         >
           {isEdit ? 'Save' : 'Confirm'}
         </Button>

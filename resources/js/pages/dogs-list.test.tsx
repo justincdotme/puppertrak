@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import React from 'react'
@@ -67,5 +68,24 @@ describe('DogsListPage', () => {
       expect(screen.getByText('0 of 2')).toBeInTheDocument()
       expect(screen.getByText('1 skipped')).toBeInTheDocument()
     })
+  })
+
+  it('passes the feeding plan into FeedSheet so the unit defaults instead of submitting empty', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Maple')).toBeInTheDocument()
+    })
+
+    const logFeedingButton = screen.getAllByRole('button', { name: 'Log feeding' })[0]
+    if (!logFeedingButton) throw new Error('Expected at least one Log feeding button')
+    await user.click(logFeedingButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Log a feeding')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: 'Confirm' })).not.toBeDisabled()
   })
 })
