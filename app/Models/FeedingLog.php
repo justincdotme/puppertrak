@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\AppLocalDatetime;
 use Database\Factories\FeedingLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -42,7 +43,7 @@ class FeedingLog extends Model
     {
         return [
             'amount'      => 'decimal:2',
-            'fed_at'      => 'datetime',
+            'fed_at'      => AppLocalDatetime::class,
             'was_skipped' => 'boolean',
         ];
     }
