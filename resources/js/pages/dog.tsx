@@ -173,6 +173,9 @@ export function DogPage() {
             >
               Today&rsquo;s feedings
             </SectionTitle>
+            {dog.feeding_instructions && (
+              <p className="text-sm text-muted-foreground">{dog.feeding_instructions}</p>
+            )}
             {today.feedings.schedule.map(entry => {
               const foodLabel = entry.food_name ?? firstPlan?.food_name ?? 'Food not set'
               const amountLabel =

@@ -32,6 +32,7 @@ export interface DogPayload {
   owner_phone?: string | null
   notes?: string | null
   feed_times?: string[] | null
+  feeding_instructions?: string | null
 }
 
 /** `archived` selects the archived-only index instead of the default active list. */

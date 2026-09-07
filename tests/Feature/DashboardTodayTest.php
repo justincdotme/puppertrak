@@ -524,6 +524,23 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
+     * @return void
+     */
+    public function test_today_payload_carries_the_dogs_feeding_instructions(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 12:00'));
+        Dog::factory()->create([
+            'feed_times'           => null,
+            'feeding_instructions' => 'Grind up the food, add water.',
+        ]);
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.dog.feeding_instructions', 'Grind up the food, add water.');
+    }
+
+    /**
      * The miss streak only considers at-or-after-anchor windows, so a dog
      * created mid-day cannot accumulate two consecutive misses from
      * pre-anchor times.

@@ -65,6 +65,7 @@ const schema = z
     owner_phone: z.string().optional().default(''),
     notes: z.string().optional().default(''),
     feed_times: z.array(z.string()),
+    feeding_instructions: z.string().optional().default(''),
     food_id: z.string().optional().default(''),
     amount: z.string().optional().default(''),
     unit: z.string().optional().default(''),
@@ -102,6 +103,7 @@ const EMPTY_VALUES: DogFormValues = {
   owner_phone: '',
   notes: '',
   feed_times: [],
+  feeding_instructions: '',
   food_id: '',
   amount: '',
   unit: '',
@@ -180,6 +182,7 @@ function DogFormInner({ existing }: DogFormInnerProps) {
       owner_phone: values.owner_phone || null,
       notes: values.notes || null,
       feed_times: values.feed_times.length > 0 ? values.feed_times : null,
+      feeding_instructions: values.feeding_instructions || null,
     }
   }
 
@@ -418,6 +421,11 @@ function DogFormInner({ existing }: DogFormInnerProps) {
                 )}
               />
             </div>
+            {area(
+              'feeding_instructions',
+              'Special instructions',
+              'Grind up the food, add warm water...'
+            )}
           </Section>
 
           <Section title="Vaccines">

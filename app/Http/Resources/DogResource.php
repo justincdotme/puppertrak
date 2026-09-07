@@ -47,6 +47,7 @@ class DogResource extends JsonResource
             'owner_phone'           => $this->owner_phone,
             'notes'                 => $this->notes,
             'feed_times'            => $this->feed_times,
+            'feeding_instructions'  => $this->feeding_instructions,
             'archived_at'           => $this->archived_at?->toIso8601String(),
             'feeding_plans'         => FeedingPlanResource::collection($this->whenLoaded('feedingPlans')),
             'dog_supplements'       => DogSupplementResource::collection($this->whenLoaded('dogSupplements')),

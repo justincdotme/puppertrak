@@ -73,6 +73,14 @@ describe('dogToFormValues', () => {
     expect(values.sex).toBe('female')
   })
 
+  it('maps feeding_instructions, defaulting null to an empty string', () => {
+    const values = dogToFormValues(maple)
+    expect(values.feeding_instructions).toBe(maple.feeding_instructions)
+
+    const values2 = dogToFormValues({ ...maple, feeding_instructions: null })
+    expect(values2.feeding_instructions).toBe('')
+  })
+
   it('maps vaccine dates', () => {
     const values = dogToFormValues(maple)
     expect(values.rabies_vaccine_date).toBe('2026-02-01')
@@ -113,6 +121,13 @@ describe('DogFormPage create mode', () => {
     expect(
       screen.getByText('Feed times are optional. Add one to enable feeding reminders.')
     ).toBeInTheDocument()
+  })
+
+  it('shows the special instructions textarea', async () => {
+    render(<DogFormPage />, { wrapper: makeWrapper() })
+
+    await screen.findByText('Add a dog')
+    expect(screen.getByLabelText('Special instructions')).toBeInTheDocument()
   })
 
   it('posts a feeding plan for the newly created dog', async () => {

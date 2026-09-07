@@ -30,6 +30,7 @@
       "owner_phone": "555-0110",
       "notes": null,
       "feed_times": ["07:00", "18:00"],
+      "feeding_instructions": "Grind up the kibble and mix in warm water.",
       "archived_at": null,
       "feeding_plans": [
         {
@@ -128,6 +129,7 @@
       "owner_phone": "555-0120",
       "notes": null,
       "feed_times": ["07:30", "18:30"],
+      "feeding_instructions": null,
       "archived_at": null,
       "feeding_plans": [
         {

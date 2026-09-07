@@ -41,6 +41,7 @@ class UpdateDogRequest extends FormRequest
             'notes'                 => ['sometimes', 'nullable', 'string'],
             'feed_times'            => ['sometimes', 'nullable', 'array', 'max:10'],
             'feed_times.*'          => ['date_format:H:i'],
+            'feeding_instructions'  => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

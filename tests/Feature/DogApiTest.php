@@ -139,6 +139,28 @@ class DogApiTest extends TestCase
     /**
      * @return void
      */
+    public function test_feeding_instructions_round_trip_through_store_update_and_show(): void
+    {
+        $created = $this->postJson('/api/dogs', [
+            'name'                 => 'Maple Bear',
+            'feeding_instructions' => 'Grind up the food, add water.',
+        ])->assertCreated()
+            ->assertJsonPath('data.feeding_instructions', 'Grind up the food, add water.')
+            ->json('data');
+
+        $this->putJson("/api/dogs/{$created['slug']}", [
+            'feeding_instructions' => 'Warm the food before serving.',
+        ])->assertOk()
+            ->assertJsonPath('data.feeding_instructions', 'Warm the food before serving.');
+
+        $this->getJson("/api/dogs/{$created['slug']}")
+            ->assertOk()
+            ->assertJsonPath('data.feeding_instructions', 'Warm the food before serving.');
+    }
+
+    /**
+     * @return void
+     */
     public function test_weight_must_be_greater_than_zero_when_present(): void
     {
         $response = $this->postJson('/api/dogs', [

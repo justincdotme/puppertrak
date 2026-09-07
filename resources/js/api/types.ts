@@ -31,6 +31,7 @@ export interface Dog {
   owner_phone: string | null
   notes: string | null
   feed_times: string[] | null
+  feeding_instructions: string | null
   archived_at: string | null
   // Present when the controller eager-loads the relations (index and show
   // endpoints both do); optional here for payloads that don't.
@@ -125,6 +126,7 @@ export interface DogTodaySummary {
   breed: string | null
   weight: string | null
   weight_unit: WeightUnit
+  feeding_instructions: string | null
   archived_at: string | null
 }
 

@@ -88,13 +88,14 @@ class TodayService
 
         return [
             'dog' => [
-                'id'          => $dog->id,
-                'slug'        => $dog->slug,
-                'name'        => $dog->name,
-                'breed'       => $dog->breed,
-                'weight'      => $dog->weight,
-                'weight_unit' => $dog->weight_unit,
-                'archived_at' => $archivedAt?->toIso8601String(),
+                'id'                   => $dog->id,
+                'slug'                 => $dog->slug,
+                'name'                 => $dog->name,
+                'breed'                => $dog->breed,
+                'weight'               => $dog->weight,
+                'weight_unit'          => $dog->weight_unit,
+                'feeding_instructions' => $dog->feeding_instructions,
+                'archived_at'          => $archivedAt?->toIso8601String(),
             ],
             'feedings' => [
                 'expected' => $activeEntries->count(),
