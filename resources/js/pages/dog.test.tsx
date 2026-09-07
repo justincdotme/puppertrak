@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import React from 'react'
@@ -70,6 +71,29 @@ describe('DogPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Feed Maple/ })).toBeInTheDocument()
+    })
+  })
+
+  it('renders an untracked feeding window dimmed with a not tracked annotation', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Not tracked')).toBeInTheDocument()
+    })
+  })
+
+  it('opens the feed sheet when tapping an untracked row, like an upcoming one', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Not tracked')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('Not tracked'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Log a feeding')).toBeInTheDocument()
     })
   })
 })
