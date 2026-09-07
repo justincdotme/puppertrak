@@ -55,6 +55,12 @@ class Dog extends Model
         static::creating(function (Dog $dog): void {
             $dog->slug = $dog->slug ?: static::uniqueSlugFor($dog->name);
         });
+
+        static::updating(function (Dog $dog): void {
+            if ($dog->isDirty('feed_times')) {
+                $dog->feed_times_set_at = now();
+            }
+        });
     }
 
     /**
@@ -149,6 +155,7 @@ class Dog extends Model
             'da2pp_vaccine_date'    => 'date',
             'meta'                  => 'array',
             'feed_times'            => 'array',
+            'feed_times_set_at'     => 'datetime',
             'archived_at'           => 'datetime',
         ];
     }
