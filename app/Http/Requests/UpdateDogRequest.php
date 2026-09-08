@@ -40,7 +40,7 @@ class UpdateDogRequest extends FormRequest
             'owner_phone'           => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes'                 => ['sometimes', 'nullable', 'string'],
             'feed_times'            => ['sometimes', 'nullable', 'array', 'max:10'],
-            'feed_times.*'          => ['date_format:H:i'],
+            'feed_times.*'          => ['date_format:H:i', 'distinct'],
             'feeding_instructions'  => ['sometimes', 'nullable', 'string'],
         ];
     }

@@ -84,6 +84,30 @@ class FeedingLogApiTest extends TestCase
     /**
      * @return void
      */
+    public function test_a_partial_update_leaves_the_omitted_fields_untouched(): void
+    {
+        $food = Food::factory()->create();
+        $log  = FeedingLog::factory()->for($food)->create([
+            'amount' => '1.00',
+            'unit'   => 'cup',
+            'fed_at' => Carbon::parse('2026-01-05 07:05'),
+            'notes'  => 'ate slowly',
+        ]);
+
+        $this->patchJson("/api/feeding-logs/{$log->id}", ['amount' => '1.25'])->assertOk();
+
+        $log->refresh();
+
+        $this->assertSame('1.25', $log->amount);
+        $this->assertSame($food->id, $log->food_id);
+        $this->assertSame('ate slowly', $log->notes);
+        $this->assertSame('cup', $log->unit);
+        $this->assertSame('2026-01-05 07:05:00', $log->fed_at->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * @return void
+     */
     public function test_a_feeding_log_can_be_deleted(): void
     {
         $log = FeedingLog::factory()->create();

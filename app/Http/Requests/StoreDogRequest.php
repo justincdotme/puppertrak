@@ -40,7 +40,7 @@ class StoreDogRequest extends FormRequest
             'owner_phone'           => ['nullable', 'string', 'max:255'],
             'notes'                 => ['nullable', 'string'],
             'feed_times'            => ['nullable', 'array', 'max:10'],
-            'feed_times.*'          => ['date_format:H:i'],
+            'feed_times.*'          => ['date_format:H:i', 'distinct'],
             'feeding_instructions'  => ['nullable', 'string'],
         ];
     }

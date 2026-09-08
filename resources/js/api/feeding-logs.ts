@@ -35,7 +35,7 @@ export async function updateFeedingLog(
   id: number,
   payload: Partial<FeedingLogPayload>
 ): Promise<FeedingLog> {
-  return unwrap(await api.put<{ data: FeedingLog }>(`/api/feeding-logs/${id}`, payload))
+  return unwrap(await api.patch<{ data: FeedingLog }>(`/api/feeding-logs/${id}`, payload))
 }
 
 export async function deleteFeedingLog(id: number): Promise<void> {

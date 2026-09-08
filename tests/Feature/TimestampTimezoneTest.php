@@ -119,17 +119,17 @@ class TimestampTimezoneTest extends TestCase
         $dog = Dog::factory()->create();
 
         $response = $this->postJson("/api/dogs/{$dog->slug}/health-notes", [
-            'body'     => 'Vomited after dinner',
-            'noted_at' => '2026-09-07T16:40:00Z',
+            'body'        => 'Vomited after dinner',
+            'occurred_at' => '2026-09-07T16:40:00Z',
         ]);
 
         $response->assertCreated();
 
         $this->assertDatabaseHas('health_notes', [
-            'id'       => $response->json('data.id'),
-            'noted_at' => '2026-09-07 09:40:00',
+            'id'          => $response->json('data.id'),
+            'occurred_at' => '2026-09-07 09:40:00',
         ]);
 
-        $this->assertSame('2026-09-07T09:40:00-07:00', $response->json('data.noted_at'));
+        $this->assertSame('2026-09-07T09:40:00-07:00', $response->json('data.occurred_at'));
     }
 }

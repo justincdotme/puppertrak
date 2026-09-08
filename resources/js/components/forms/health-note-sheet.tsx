@@ -15,12 +15,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useNotification } from '@/components/app/use-notification'
-import { nowLocal, toIso } from '@/lib/datetime'
+import { isoToLocal, nowLocal, toIso } from '@/lib/datetime'
 import { useCreateHealthNote, useUpdateHealthNote } from '@/hooks/use-health-notes'
 import type { HealthNote } from '@/api/types'
 
 const schema = z.object({
-  noted_at: z.string().min(1, 'When did this happen?'),
+  occurred_at: z.string().min(1, 'When did this happen?'),
   title: z.string().optional().default(''),
   body: z.string().min(3, 'Add a few words about what happened.'),
 })
@@ -43,25 +43,25 @@ export function HealthNoteSheet({ open, onOpenChange, dogSlug, note }: HealthNot
 
   const form = useForm<HealthNoteValues>({
     resolver: zodResolver(schema),
-    defaultValues: { noted_at: nowLocal(), title: '', body: '' },
+    defaultValues: { occurred_at: nowLocal(), title: '', body: '' },
   })
 
   useEffect(() => {
     if (!open) return
     if (note) {
       form.reset({
-        noted_at: nowLocal(),
+        occurred_at: isoToLocal(note.occurred_at),
         title: note.title ?? '',
         body: note.body,
       })
     } else {
-      form.reset({ noted_at: nowLocal(), title: '', body: '' })
+      form.reset({ occurred_at: nowLocal(), title: '', body: '' })
     }
   }, [open, note, form])
 
   function onSubmit(values: HealthNoteValues) {
     const payload = {
-      noted_at: toIso(values.noted_at),
+      occurred_at: toIso(values.occurred_at),
       title: values.title?.trim() || null,
       body: values.body.trim(),
     }
@@ -89,7 +89,7 @@ export function HealthNoteSheet({ open, onOpenChange, dogSlug, note }: HealthNot
           <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
-              name="noted_at"
+              name="occurred_at"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>When</FormLabel>

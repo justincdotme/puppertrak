@@ -26,7 +26,7 @@ final class HealthNoteController extends Controller
     public function index(Dog $dog): AnonymousResourceCollection
     {
         return HealthNoteResource::collection(
-            $dog->healthNotes()->orderByDesc('noted_at')->get(),
+            $dog->healthNotes()->orderByDesc('occurred_at')->get(),
         );
     }
 
@@ -39,7 +39,7 @@ final class HealthNoteController extends Controller
     public function store(StoreHealthNoteRequest $request, Dog $dog): JsonResponse
     {
         $data = $request->validated();
-        $data['noted_at'] ??= now();
+        $data['occurred_at'] ??= now();
 
         $note = $dog->healthNotes()->create($data);
 

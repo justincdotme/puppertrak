@@ -5,7 +5,7 @@ import type { HealthNote } from './types'
 const unwrap = <T>(res: AxiosResponse<{ data: T }>): T => res.data.data
 
 export interface HealthNotePayload {
-  noted_at?: string
+  occurred_at?: string
   title?: string | null
   body: string
 }

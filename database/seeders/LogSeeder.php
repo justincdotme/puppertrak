@@ -98,9 +98,9 @@ class LogSeeder extends Seeder
         ]);
 
         HealthNote::factory()->for($maple)->create([
-            'noted_at' => now()->subHours(2),
-            'title'    => null,
-            'body'     => 'Vomited after dinner',
+            'occurred_at' => now()->subHours(2),
+            'title'       => null,
+            'body'        => 'Vomited after dinner',
         ]);
     }
 

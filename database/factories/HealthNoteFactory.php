@@ -22,10 +22,10 @@ class HealthNoteFactory extends Factory
     public function definition(): array
     {
         return [
-            'dog_id'   => Dog::factory(),
-            'noted_at' => now(),
-            'title'    => fake()->optional()->words(3, true),
-            'body'     => fake()->sentence(),
+            'dog_id'      => Dog::factory(),
+            'occurred_at' => now(),
+            'title'       => fake()->optional()->words(3, true),
+            'body'        => fake()->sentence(),
         ];
     }
 }

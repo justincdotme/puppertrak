@@ -17,15 +17,15 @@ class HealthNoteResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var \Illuminate\Support\Carbon $notedAt */
-        $notedAt = $this->noted_at;
+        /** @var \Illuminate\Support\Carbon $occurredAt */
+        $occurredAt = $this->occurred_at;
 
         return [
-            'id'       => $this->id,
-            'dog_id'   => $this->dog_id,
-            'noted_at' => $notedAt->toIso8601String(),
-            'title'    => $this->title,
-            'body'     => $this->body,
+            'id'          => $this->id,
+            'dog_id'      => $this->dog_id,
+            'occurred_at' => $occurredAt->toIso8601String(),
+            'title'       => $this->title,
+            'body'        => $this->body,
         ];
     }
 }

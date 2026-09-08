@@ -14,9 +14,9 @@ class StoreHealthNoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'noted_at' => ['nullable', 'date'],
-            'title'    => ['nullable', 'string', 'max:255'],
-            'body'     => ['required', 'string'],
+            'occurred_at' => ['nullable', 'date'],
+            'title'       => ['nullable', 'string', 'max:255'],
+            'body'        => ['required', 'string'],
         ];
     }
 }

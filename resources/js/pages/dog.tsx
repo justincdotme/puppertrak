@@ -18,7 +18,6 @@ import { useNotification } from '@/components/app/use-notification'
 import { formatDate, formatStamp } from '@/lib/format'
 import type {
   DogSupplement,
-  FeedingLog,
   FeedingScheduleEntry,
   HealthNote,
   SupplementScheduleEntry,
@@ -51,7 +50,7 @@ export function DogPage() {
   const { notify } = useNotification()
 
   const [feedOpen, setFeedOpen] = useState(false)
-  const [feedLog, setFeedLog] = useState<FeedingLog | undefined>(undefined)
+  const [feedEntry, setFeedEntry] = useState<FeedingScheduleEntry | undefined>(undefined)
   const [noteOpen, setNoteOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<HealthNote | undefined>(undefined)
   const [assignOpen, setAssignOpen] = useState(false)
@@ -62,24 +61,7 @@ export function DogPage() {
   if (!dog) return <Navigate to="/" replace />
 
   const openFeedForSchedule = (entry: FeedingScheduleEntry) => {
-    if (entry.status === 'fed' || entry.status === 'skipped') {
-      if (entry.log_id) {
-        setFeedLog({
-          id: entry.log_id,
-          dog_id: dog.id,
-          food_id: null,
-          food_name: entry.food_name,
-          amount: entry.amount ?? '0',
-          unit: entry.unit ?? 'cup',
-          fed_at: entry.logged_at ?? '',
-          was_skipped: entry.status === 'skipped',
-          skip_reason: entry.skip_reason,
-          notes: null,
-        })
-      }
-    } else {
-      setFeedLog(undefined)
-    }
+    setFeedEntry(entry)
     setFeedOpen(true)
   }
 
@@ -164,15 +146,7 @@ export function DogPage() {
 
         {today && (
           <section className="grid gap-2">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                  {today.feedings.fed} of {today.feedings.expected} today
-                </span>
-              }
-            >
-              Today&rsquo;s feedings
-            </SectionTitle>
+            <SectionTitle>Today&rsquo;s feedings</SectionTitle>
             {dog.feeding_instructions && (
               <p className="text-sm text-muted-foreground">{dog.feeding_instructions}</p>
             )}
@@ -187,7 +161,8 @@ export function DogPage() {
 
               let sublabel = 'Upcoming'
               if (entry.status === 'fed') sublabel = 'Logged'
-              else if (entry.status === 'skipped') sublabel = entry.skip_reason ?? 'Skipped'
+              else if (entry.status === 'skipped')
+                sublabel = entry.skip_reason ? `Skipped: ${entry.skip_reason}` : 'Skipped'
               else if (entry.status === 'overdue') sublabel = 'Overdue'
 
               return (
@@ -307,7 +282,7 @@ export function DogPage() {
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="font-semibold">{note.title || 'Health note'}</p>
                   <p className="flex-none font-mono text-xs whitespace-nowrap text-muted-foreground">
-                    {formatStamp(note.noted_at)}
+                    {formatStamp(note.occurred_at)}
                   </p>
                 </div>
                 <Separator />
@@ -343,7 +318,7 @@ export function DogPage() {
             size="xl"
             className="w-full text-lg sm:flex-1"
             onClick={() => {
-              setFeedLog(undefined)
+              setFeedEntry(undefined)
               setFeedOpen(true)
             }}
           >
@@ -381,7 +356,7 @@ export function DogPage() {
         dogSlug={dog.slug}
         dogToday={today ?? undefined}
         plans={dog.feeding_plans}
-        log={feedLog}
+        entry={feedEntry}
       />
       <SupplementSheet
         open={suppOpen}

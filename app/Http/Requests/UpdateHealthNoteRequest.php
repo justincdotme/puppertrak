@@ -14,9 +14,9 @@ class UpdateHealthNoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'noted_at' => ['sometimes', 'nullable', 'date'],
-            'title'    => ['sometimes', 'nullable', 'string', 'max:255'],
-            'body'     => ['sometimes', 'required', 'string'],
+            'occurred_at' => ['sometimes', 'nullable', 'date'],
+            'title'       => ['sometimes', 'nullable', 'string', 'max:255'],
+            'body'        => ['sometimes', 'required', 'string'],
         ];
     }
 }

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['dog_id', 'noted_at', 'title', 'body'])]
+#[Fillable(['dog_id', 'occurred_at', 'title', 'body'])]
 class HealthNote extends Model
 {
     /** @use HasFactory<HealthNoteFactory> */
@@ -31,7 +31,7 @@ class HealthNote extends Model
     protected function casts(): array
     {
         return [
-            'noted_at' => AppLocalDatetime::class,
+            'occurred_at' => AppLocalDatetime::class,
         ];
     }
 }

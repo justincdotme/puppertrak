@@ -10,6 +10,7 @@ use App\Models\FeedingLog;
 use App\Models\HealthNote;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DashboardTodayTest extends TestCase
@@ -17,11 +18,48 @@ class DashboardTodayTest extends TestCase
     use RefreshDatabase;
 
     /**
+     * @return array<string, array{0: string, 1: string, 2: boolean}>
+     */
+    public static function graceWindowCases(): array
+    {
+        return [
+            'before the scheduled time'    => ['today 06:00', 'upcoming', false],
+            'inside the grace period'      => ['today 08:30', 'upcoming', false],
+            'grace period exactly elapsed' => ['today 09:00', 'upcoming', false],
+            'one minute past the grace'    => ['today 09:01', 'overdue', true],
+            'hours past the grace'         => ['today 14:00', 'overdue', true],
+        ];
+    }
+
+    /**
+     * @param string  $now            Test clock time.
+     * @param string  $expectedStatus Status of the 07:00 window.
+     * @param boolean $expectedAlert  Expected feeding_missed value.
+     *
      * @return void
      */
-    public function test_no_warning_before_a_feed_window_closes(): void
+    #[DataProvider('graceWindowCases')]
+    public function test_missed_meal_alert_waits_for_the_grace_period(string $now, string $expectedStatus, bool $expectedAlert): void
     {
-        Carbon::setTestNow(Carbon::parse('today 08:00'));
+        Carbon::setTestNow(Carbon::parse($now));
+        Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.status', $expectedStatus)
+            ->assertJsonPath('data.0.alerts.feeding_missed', $expectedAlert);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_two_missed_meals_still_report_a_single_boolean(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 20:01'));
         Dog::factory()->create([
             'feed_times' => ['07:00', '18:00'],
             'created_at' => now()->subDay(),
@@ -30,27 +68,71 @@ class DashboardTodayTest extends TestCase
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'upcoming');
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue')
+            ->assertJsonPath('data.0.alerts.feeding_missed', true);
     }
 
     /**
+     * Skipping is a deliberate act, so it must never surface as a missed meal.
+     *
      * @return void
      */
-    public function test_first_miss_is_overdue_without_alert(): void
+    public function test_skipped_meal_is_not_a_missed_meal(): void
     {
-        Carbon::setTestNow(Carbon::parse('today 09:01'));
-        Dog::factory()->create([
-            'feed_times' => ['07:00', '18:00'],
-            'created_at' => now()->startOfDay(),
+        Carbon::setTestNow(Carbon::parse('today 20:01'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+        FeedingLog::factory()->for($dog)->create([
+            'amount'      => 0,
+            'was_skipped' => true,
+            'skip_reason' => "wouldn't eat",
+            'fed_at'      => Carbon::parse('today 07:15'),
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.schedule.1.status', 'upcoming');
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'skipped')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_untracked_window_never_counts_as_missed(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 20:00'));
+        Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
+
+        Carbon::setTestNow(Carbon::parse('today 23:59'));
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data.0.feedings.schedule')
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'untracked')
+            ->assertJsonPath('data.0.feedings.schedule.1.status', 'untracked')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_dog_without_feed_times_is_never_missed(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 23:00'));
+        Dog::factory()->create([
+            'feed_times' => null,
+            'created_at' => now()->subDay(),
+        ]);
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonCount(0, 'data.0.feedings.schedule')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
     }
 
     /**
@@ -71,32 +153,8 @@ class DashboardTodayTest extends TestCase
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
+            ->assertJsonPath('data.0.alerts.feeding_missed', false)
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed');
-    }
-
-    /**
-     * @return void
-     */
-    public function test_skip_log_satisfies_the_time_without_warning(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 10:00'));
-        $dog = Dog::factory()->create([
-            'feed_times' => ['07:00'],
-            'created_at' => now()->subDay(),
-        ]);
-        FeedingLog::factory()->for($dog)->create([
-            'amount'      => 0,
-            'was_skipped' => true,
-            'skip_reason' => "wouldn't eat",
-            'fed_at'      => Carbon::parse('today 07:15'),
-        ]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'skipped');
     }
 
     /**
@@ -117,7 +175,8 @@ class DashboardTodayTest extends TestCase
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.alerts.feeding_missed', true)
             ->assertJsonCount(1, 'data.0.feedings.extras');
     }
 
@@ -144,25 +203,9 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
-     * @return void
-     */
-    public function test_dog_without_feed_times_never_warns(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 12:00'));
-        Dog::factory()->create(['feed_times' => null]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.feedings.expected', 0)
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false);
-    }
-
-    /**
-     * A log timestamped before midnight belongs to yesterday's partition, not
-     * today's. Without day partitioning the log would satisfy today's 00:30
-     * window (it falls inside the variance range), breaking the two-miss streak
-     * and flipping the alert to false.
+     * A log timestamped before midnight belongs to yesterday. Pulling it into
+     * today would let it satisfy the 00:30 window, which sits inside the
+     * variance range of 23:30.
      *
      * @return void
      */
@@ -181,8 +224,8 @@ class DashboardTodayTest extends TestCase
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', true)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue');
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.alerts.feeding_missed', true);
     }
 
     /**
@@ -201,7 +244,7 @@ class DashboardTodayTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.0.alerts.supplements_overdue', true)
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false);
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
     }
 
     /**
@@ -242,10 +285,10 @@ class DashboardTodayTest extends TestCase
         Carbon::setTestNow(Carbon::parse('today 12:00'));
         $dog = Dog::factory()->create(['feed_times' => null]);
         HealthNote::factory()->for($dog)->create([
-            'noted_at' => now()->subHours(2),
+            'occurred_at' => now()->subHours(2),
         ]);
         HealthNote::factory()->for($dog)->create([
-            'noted_at' => now()->subHours(30),
+            'occurred_at' => now()->subHours(30),
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
@@ -278,6 +321,33 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
+     * Both key sets are exhaustive, so an extra key is a value no consumer
+     * reads and no code path keeps current.
+     *
+     * @return void
+     */
+    public function test_feedings_block_carries_only_schedule_and_extras(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 12:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+
+        $response = $this->getJson("/api/dogs/{$dog->slug}/today");
+
+        $response->assertOk();
+
+        $feedings = $response->json('data.feedings');
+        $alerts   = $response->json('data.alerts');
+
+        $this->assertIsArray($feedings);
+        $this->assertIsArray($alerts);
+        $this->assertEqualsCanonicalizing(['schedule', 'extras'], array_keys($feedings));
+        $this->assertEqualsCanonicalizing(['feeding_missed', 'supplements_overdue'], array_keys($alerts));
+    }
+
+    /**
      * @return void
      */
     public function test_archived_dog_still_resolves_on_per_dog_today(): void
@@ -294,98 +364,7 @@ class DashboardTodayTest extends TestCase
     /**
      * @return void
      */
-    public function test_two_consecutive_misses_today_triggers_alert(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
-        Dog::factory()->create([
-            'feed_times' => ['07:00', '18:00'],
-            'created_at' => now()->subDay(),
-        ]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', true)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.overdue', 2);
-    }
-
-    /**
-     * @return void
-     */
-    public function test_cross_day_miss_streak_triggers_alert(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 09:01'));
-        Dog::factory()->create([
-            'feed_times' => ['07:00', '18:00'],
-            'created_at' => now()->subDay(),
-        ]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', true)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.overdue', 1);
-    }
-
-    /**
-     * @return void
-     */
-    public function test_fed_window_breaks_miss_streak(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
-        $dog = Dog::factory()->create([
-            'feed_times' => ['07:00', '18:00'],
-            'created_at' => now()->subDays(2),
-        ]);
-        FeedingLog::factory()->for($dog)->create([
-            'amount' => 1,
-            'fed_at' => Carbon::parse('today 07:30'),
-        ]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed')
-            ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.overdue', 1);
-    }
-
-    /**
-     * @return void
-     */
-    public function test_skip_log_breaks_miss_streak(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 09:01'));
-        $dog = Dog::factory()->create([
-            'feed_times' => ['07:00', '18:00'],
-            'created_at' => now()->subDay(),
-        ]);
-        FeedingLog::factory()->for($dog)->create([
-            'amount'      => 0,
-            'was_skipped' => true,
-            'skip_reason' => 'sick',
-            'fed_at'      => Carbon::parse('yesterday 18:15'),
-        ]);
-
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.overdue', 1);
-    }
-
-    /**
-     * Pre-anchor windows appear in the schedule as "untracked" and are
-     * excluded from expected, overdue, and the alert.
-     *
-     * @return void
-     */
-    public function test_pre_anchor_window_shows_untracked_and_expected_excludes_it(): void
+    public function test_pre_anchor_window_is_untracked_while_later_windows_still_alert(): void
     {
         Carbon::setTestNow(Carbon::parse('today 15:00'));
         Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
@@ -399,15 +378,13 @@ class DashboardTodayTest extends TestCase
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'untracked')
             ->assertJsonPath('data.0.feedings.schedule.1.time', '18:00')
             ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.expected', 1)
-            ->assertJsonPath('data.0.feedings.overdue', 1)
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false);
+            ->assertJsonPath('data.0.alerts.feeding_missed', true);
     }
 
     /**
      * @return void
      */
-    public function test_log_matching_untracked_window_flips_to_fed_and_increments_expected(): void
+    public function test_log_matching_untracked_window_flips_to_fed(): void
     {
         Carbon::setTestNow(Carbon::parse('today 15:00'));
         $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
@@ -416,13 +393,13 @@ class DashboardTodayTest extends TestCase
             'fed_at' => Carbon::parse('today 07:30'),
         ]);
 
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
+        Carbon::setTestNow(Carbon::parse('today 17:00'));
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed')
-            ->assertJsonPath('data.0.feedings.expected', 2)
-            ->assertJsonPath('data.0.feedings.fed', 1);
+            ->assertJsonPath('data.0.feedings.schedule.1.status', 'upcoming')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
     }
 
     /**
@@ -439,36 +416,12 @@ class DashboardTodayTest extends TestCase
             'fed_at'      => Carbon::parse('today 07:15'),
         ]);
 
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
+        Carbon::setTestNow(Carbon::parse('today 17:00'));
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'skipped')
-            ->assertJsonPath('data.0.feedings.expected', 2)
-            ->assertJsonPath('data.0.feedings.skipped', 1);
-    }
-
-    /**
-     * A dog created at 20:00 with 07:00/18:00 feed times shows zero
-     * overdue and no alert. This is the original day-one protection.
-     *
-     * @return void
-     */
-    public function test_untracked_windows_produce_no_overdue_on_day_one(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 20:00'));
-        Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
-
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonCount(2, 'data.0.feedings.schedule')
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'untracked')
-            ->assertJsonPath('data.0.feedings.schedule.1.status', 'untracked')
-            ->assertJsonPath('data.0.feedings.expected', 0)
-            ->assertJsonPath('data.0.feedings.overdue', 0)
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false);
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
     }
 
     /**
@@ -496,8 +449,7 @@ class DashboardTodayTest extends TestCase
             ->assertJsonCount(3, 'data.0.feedings.schedule')
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'untracked')
             ->assertJsonPath('data.0.feedings.schedule.1.status', 'untracked')
-            ->assertJsonPath('data.0.feedings.schedule.2.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.expected', 1);
+            ->assertJsonPath('data.0.feedings.schedule.2.status', 'overdue');
     }
 
     /**
@@ -518,9 +470,9 @@ class DashboardTodayTest extends TestCase
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
-            ->assertJsonPath('data.0.feedings.expected', 2)
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
-            ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue');
+            ->assertJsonPath('data.0.feedings.schedule.1.status', 'overdue')
+            ->assertJsonPath('data.0.alerts.feeding_missed', true);
     }
 
     /**
@@ -538,25 +490,5 @@ class DashboardTodayTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.0.dog.feeding_instructions', 'Grind up the food, add water.');
-    }
-
-    /**
-     * The miss streak only considers at-or-after-anchor windows, so a dog
-     * created mid-day cannot accumulate two consecutive misses from
-     * pre-anchor times.
-     *
-     * @return void
-     */
-    public function test_streak_ignores_pre_anchor_windows(): void
-    {
-        Carbon::setTestNow(Carbon::parse('today 15:00'));
-        Dog::factory()->create(['feed_times' => ['07:00', '12:00', '18:00']]);
-
-        Carbon::setTestNow(Carbon::parse('today 20:01'));
-        $response = $this->getJson('/api/dashboard/today');
-
-        $response->assertOk()
-            ->assertJsonPath('data.0.feedings.overdue', 1)
-            ->assertJsonPath('data.0.alerts.feedings_overdue', false);
     }
 }

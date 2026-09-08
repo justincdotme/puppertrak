@@ -104,7 +104,7 @@ export interface SupplementLog {
 export interface HealthNote {
   id: number
   dog_id: number
-  noted_at: string
+  occurred_at: string
   title: string | null
   body: string
 }
@@ -182,11 +182,6 @@ export interface AsNeededSupplement {
 export interface DogToday {
   dog: DogTodaySummary
   feedings: {
-    expected: number
-    handled: number
-    fed: number
-    skipped: number
-    overdue: number
     schedule: FeedingScheduleEntry[]
     extras: FeedingExtraEntry[]
   }
@@ -198,7 +193,7 @@ export interface DogToday {
     as_needed: AsNeededSupplement[]
   }
   alerts: {
-    feedings_overdue: boolean
+    feeding_missed: boolean
     supplements_overdue: boolean
   }
   health_notes_last_24h: number
