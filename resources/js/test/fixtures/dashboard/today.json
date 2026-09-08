@@ -12,11 +12,6 @@
         "archived_at": null
       },
       "feedings": {
-        "expected": 2,
-        "handled": 1,
-        "fed": 1,
-        "skipped": 0,
-        "overdue": 0,
         "schedule": [
           {
             "time": "07:00",
@@ -101,7 +96,7 @@
         ]
       },
       "alerts": {
-        "feedings_overdue": false,
+        "feeding_missed": false,
         "supplements_overdue": false
       },
       "health_notes_last_24h": 1
@@ -118,11 +113,6 @@
         "archived_at": null
       },
       "feedings": {
-        "expected": 2,
-        "handled": 1,
-        "fed": 0,
-        "skipped": 1,
-        "overdue": 1,
         "schedule": [
           {
             "time": "07:30",
@@ -155,7 +145,7 @@
         "as_needed": []
       },
       "alerts": {
-        "feedings_overdue": true,
+        "feeding_missed": true,
         "supplements_overdue": false
       },
       "health_notes_last_24h": 0

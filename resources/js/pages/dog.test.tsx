@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import React from 'react'
@@ -7,6 +8,34 @@ import { describe, expect, it } from 'vitest'
 import { DogPage } from './dog'
 import { NotificationProvider } from '@/components/app/notifications'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { server } from '@/test/server'
+import dashboardFixture from '@/test/fixtures/dashboard/today.json'
+import type { DogToday, FeedingScheduleEntry } from '@/api/types'
+
+const mapleToday = dashboardFixture.data[0] as DogToday
+
+function skippedEntry(time: string, reason: string | null): FeedingScheduleEntry {
+  return {
+    time,
+    status: 'skipped',
+    log_id: 6,
+    logged_at: null,
+    amount: '0.00',
+    unit: 'cup',
+    food_name: 'Purina Pro Plan Sensitive Skin',
+    skip_reason: reason,
+  }
+}
+
+function serveMapleSchedule(schedule: FeedingScheduleEntry[]) {
+  server.use(
+    http.get('/api/dogs/maple/today', () =>
+      HttpResponse.json({
+        data: { ...mapleToday, feedings: { ...mapleToday.feedings, schedule } },
+      })
+    )
+  )
+}
 
 function renderPage(slug = 'maple') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -88,6 +117,20 @@ describe('DogPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Not tracked')).toBeInTheDocument()
     })
+  })
+
+  it('names a skipped meal as skipped whether or not the API supplies a reason', async () => {
+    serveMapleSchedule([
+      skippedEntry('07:00', 'Turned away from the bowl'),
+      skippedEntry('18:00', null),
+    ])
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Skipped: Turned away from the bowl')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Skipped')).toBeInTheDocument()
   })
 
   it('opens the feed sheet when tapping an untracked row, like an upcoming one', async () => {

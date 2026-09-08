@@ -164,15 +164,7 @@ export function DogPage() {
 
         {today && (
           <section className="grid gap-2">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                  {today.feedings.fed} of {today.feedings.expected} today
-                </span>
-              }
-            >
-              Today&rsquo;s feedings
-            </SectionTitle>
+            <SectionTitle>Today&rsquo;s feedings</SectionTitle>
             {dog.feeding_instructions && (
               <p className="text-sm text-muted-foreground">{dog.feeding_instructions}</p>
             )}
@@ -187,7 +179,8 @@ export function DogPage() {
 
               let sublabel = 'Upcoming'
               if (entry.status === 'fed') sublabel = 'Logged'
-              else if (entry.status === 'skipped') sublabel = entry.skip_reason ?? 'Skipped'
+              else if (entry.status === 'skipped')
+                sublabel = entry.skip_reason ? `Skipped: ${entry.skip_reason}` : 'Skipped'
               else if (entry.status === 'overdue') sublabel = 'Overdue'
 
               return (

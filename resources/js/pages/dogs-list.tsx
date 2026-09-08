@@ -27,10 +27,7 @@ export function DogsListPage() {
   const [suppDog, setSuppDog] = useState<DogToday | null>(null)
   const [archivedExpanded, setArchivedExpanded] = useState(false)
 
-  const warnings = (dashboard ?? []).filter(d => d.alerts.feedings_overdue)
-  const suppWarnings = (dashboard ?? []).filter(
-    d => d.alerts.supplements_overdue && !d.alerts.feedings_overdue
-  )
+  const suppWarnings = (dashboard ?? []).filter(d => d.alerts.supplements_overdue)
 
   return (
     <div>
@@ -54,18 +51,6 @@ export function DogsListPage() {
       />
 
       <Screen>
-        {warnings.length > 0 && (
-          <div className="grid gap-2">
-            {warnings.map(d => (
-              <AlertBanner
-                key={d.dog.slug}
-                message={`${d.dog.name} has ${d.feedings.overdue} overdue feeding${d.feedings.overdue === 1 ? '' : 's'}`}
-                variant="warning"
-              />
-            ))}
-          </div>
-        )}
-
         {suppWarnings.length > 0 && (
           <div className="grid gap-2">
             {suppWarnings.map(d => (
@@ -92,15 +77,9 @@ export function DogsListPage() {
                     </span>
                   </span>
                   <div className="flex flex-none flex-col items-end gap-1">
-                    <Badge
-                      variant={d.feedings.overdue > 0 ? 'warning' : 'success'}
-                      className="whitespace-nowrap"
-                    >
-                      {d.feedings.fed} of {d.feedings.expected}
-                    </Badge>
-                    {d.feedings.skipped > 0 && (
+                    {d.alerts.feeding_missed && (
                       <Badge variant="warning" className="whitespace-nowrap">
-                        {d.feedings.skipped} skipped
+                        Missed meal
                       </Badge>
                     )}
                     {d.health_notes_last_24h > 0 && (

@@ -20,6 +20,6 @@ describe('useDashboard', () => {
 
     expect(result.current.data).toHaveLength(dashboardFixture.data.length)
     expect(result.current.data?.[0]?.dog.slug).toBe('maple')
-    expect(result.current.data?.[1]?.alerts.feedings_overdue).toBe(true)
+    expect(result.current.data?.[1]?.alerts.feeding_missed).toBe(true)
   })
 })

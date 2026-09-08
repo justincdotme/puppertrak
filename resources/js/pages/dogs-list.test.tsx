@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -27,21 +27,22 @@ function renderPage() {
   )
 }
 
+function cardFor(name: string): HTMLElement {
+  const card = screen.getByText(name).closest('li')
+  if (!card) throw new Error(`Expected a card for ${name}`)
+  return card
+}
+
 describe('DogsListPage', () => {
-  it('shows an overdue banner for Biscuit', async () => {
+  it('badges only the dogs the API flags with a missed meal', async () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText(/Biscuit has 1 overdue feeding/)).toBeInTheDocument()
+      expect(screen.getByText('Biscuit')).toBeInTheDocument()
     })
-  })
 
-  it('shows Maple progress as 1 of 2', async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('1 of 2')).toBeInTheDocument()
-    })
+    expect(within(cardFor('Biscuit')).getByText('Missed meal')).toBeInTheDocument()
+    expect(within(cardFor('Maple')).queryByText('Missed meal')).not.toBeInTheDocument()
   })
 
   it('shows a health note badge for Maple', async () => {
@@ -61,13 +62,15 @@ describe('DogsListPage', () => {
     })
   })
 
-  it('shows Biscuit as 0 of 2 fed even though a feeding was skipped', async () => {
+  it('leaves the fed-of-expected count and the skipped badge off the cards', async () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('0 of 2')).toBeInTheDocument()
-      expect(screen.getByText('1 skipped')).toBeInTheDocument()
+      expect(screen.getByText('Maple')).toBeInTheDocument()
     })
+
+    expect(screen.queryByText(/\d+ of \d+/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/skipped/i)).not.toBeInTheDocument()
   })
 
   it('passes the feeding plan into FeedSheet so the unit defaults instead of submitting empty', async () => {
