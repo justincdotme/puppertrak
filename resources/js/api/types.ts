@@ -104,7 +104,7 @@ export interface SupplementLog {
 export interface HealthNote {
   id: number
   dog_id: number
-  noted_at: string
+  occurred_at: string
   title: string | null
   body: string
 }

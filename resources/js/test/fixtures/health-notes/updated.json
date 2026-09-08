@@ -2,7 +2,7 @@
   "data": {
     "id": 1,
     "dog_id": 1,
-    "noted_at": "2026-09-07T08:00:00-07:00",
+    "occurred_at": "2026-09-07T08:00:00-07:00",
     "title": "Upset stomach",
     "body": "Vomited after dinner, seems fine this morning."
   }

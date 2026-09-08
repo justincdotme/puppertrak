@@ -3,6 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+/** Mirrors the server's max:10 rule so the form cannot build a payload the API rejects. */
+const MAX_FEED_TIMES = 10
+
+const HOURLY_CANDIDATES = 24
+
 interface FeedTimesFieldProps {
   value: string[]
   onChange: (times: string[]) => void
@@ -16,8 +21,23 @@ export function FeedTimesField({
   label = 'Feed times',
   description,
 }: FeedTimesFieldProps) {
+  const atCapacity = value.length >= MAX_FEED_TIMES
+
   function addTime() {
-    onChange([...value, '12:00'])
+    if (atCapacity) {
+      return
+    }
+
+    // Bounded by the number of candidates rather than by finding a free one,
+    // so an exhausted list can never spin.
+    for (let offset = 0; offset < HOURLY_CANDIDATES; offset++) {
+      const candidate = `${String((12 + offset) % HOURLY_CANDIDATES).padStart(2, '0')}:00`
+
+      if (!value.includes(candidate)) {
+        onChange([...value, candidate])
+        return
+      }
+    }
   }
 
   function removeTime(index: number) {
@@ -53,7 +73,14 @@ export function FeedTimesField({
           </Button>
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" onClick={addTime} className="w-fit">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addTime}
+        disabled={atCapacity}
+        className="w-fit"
+      >
         <Plus className="size-4" />
         Add time
       </Button>

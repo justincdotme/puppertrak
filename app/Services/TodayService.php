@@ -53,7 +53,7 @@ class TodayService
 
         $recentHours     = (int) config('puppertrak.health_note_recent_hours');
         $healthNoteCount = $dog->healthNotes()
-            ->where('noted_at', '>=', now()->subHours($recentHours))
+            ->where('occurred_at', '>=', now()->subHours($recentHours))
             ->count();
 
         /** @var Carbon|null $archivedAt */

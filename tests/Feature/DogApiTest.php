@@ -170,4 +170,44 @@ class DogApiTest extends TestCase
 
         $response->assertUnprocessable()->assertJsonValidationErrors('weight');
     }
+
+    /**
+     * @return void
+     */
+    public function test_creating_a_dog_with_duplicate_feed_times_is_rejected(): void
+    {
+        $response = $this->postJson('/api/dogs', [
+            'name'       => 'Rosie',
+            'feed_times' => ['12:00', '12:00'],
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('feed_times.0');
+    }
+
+    /**
+     * @return void
+     */
+    public function test_updating_a_dog_with_duplicate_feed_times_is_rejected(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00']]);
+
+        $response = $this->putJson("/api/dogs/{$dog->slug}", [
+            'feed_times' => ['08:00', '08:00'],
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('feed_times.0');
+    }
+
+    /**
+     * @return void
+     */
+    public function test_a_dog_can_be_created_with_distinct_feed_times(): void
+    {
+        $response = $this->postJson('/api/dogs', [
+            'name'       => 'Rosie',
+            'feed_times' => ['07:00', '12:00', '18:00'],
+        ]);
+
+        $response->assertCreated()->assertJsonPath('data.feed_times', ['07:00', '12:00', '18:00']);
+    }
 }

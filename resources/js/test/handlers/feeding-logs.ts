@@ -19,6 +19,6 @@ export const feedingLogHandlers = [
     }
     return HttpResponse.json(created, { status: 201 })
   }),
-  http.put('/api/feeding-logs/:id', () => HttpResponse.json(updated)),
+  http.patch('/api/feeding-logs/:id', () => HttpResponse.json(updated)),
   http.delete('/api/feeding-logs/:id', () => new HttpResponse(null, { status: 204 })),
 ]

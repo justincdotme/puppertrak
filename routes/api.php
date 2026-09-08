@@ -30,7 +30,7 @@ Route::delete('feeding-plans/{feeding_plan}', [FeedingPlanController::class, 'de
 
 Route::get('feeding-logs', [FeedingLogController::class, 'index']);
 Route::post('dogs/{dog:slug}/feeding-logs', [FeedingLogController::class, 'store']);
-Route::put('feeding-logs/{feeding_log}', [FeedingLogController::class, 'update']);
+Route::match(['put', 'patch'], 'feeding-logs/{feeding_log}', [FeedingLogController::class, 'update']);
 Route::delete('feeding-logs/{feeding_log}', [FeedingLogController::class, 'destroy']);
 
 Route::apiResource('supplements', SupplementController::class);

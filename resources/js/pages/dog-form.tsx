@@ -64,7 +64,9 @@ const schema = z
     owner_name: z.string().optional().default(''),
     owner_phone: z.string().optional().default(''),
     notes: z.string().optional().default(''),
-    feed_times: z.array(z.string()),
+    feed_times: z.array(z.string()).refine(times => new Set(times).size === times.length, {
+      message: 'Feed times must be unique.',
+    }),
     feeding_instructions: z.string().optional().default(''),
     food_id: z.string().optional().default(''),
     amount: z.string().optional().default(''),
@@ -389,6 +391,7 @@ function DogFormInner({ existing }: DogFormInnerProps) {
                     label="Feed times"
                     description="Sets the AM / PM schedule on the dog page."
                   />
+                  <FormMessage />
                 </FormItem>
               )}
             />

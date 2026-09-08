@@ -285,10 +285,10 @@ class DashboardTodayTest extends TestCase
         Carbon::setTestNow(Carbon::parse('today 12:00'));
         $dog = Dog::factory()->create(['feed_times' => null]);
         HealthNote::factory()->for($dog)->create([
-            'noted_at' => now()->subHours(2),
+            'occurred_at' => now()->subHours(2),
         ]);
         HealthNote::factory()->for($dog)->create([
-            'noted_at' => now()->subHours(30),
+            'occurred_at' => now()->subHours(30),
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
