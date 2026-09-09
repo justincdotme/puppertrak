@@ -32,6 +32,33 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
+     * @return array<string, array{0: list<array<string, mixed>>, 1: string}>
+     */
+    public static function slotStatusCases(): array
+    {
+        return [
+            'all skipped' => [
+                [
+                    ['amount' => 0, 'was_skipped' => true, 'skip_reason' => 'sick', 'fed_at' => 'today 07:10'],
+                    ['amount' => 0, 'was_skipped' => true, 'skip_reason' => 'still sick', 'fed_at' => 'today 07:30'],
+                ],
+                'skipped',
+            ],
+            'mixed skipped and fed' => [
+                [
+                    ['amount' => 0, 'was_skipped' => true, 'skip_reason' => 'sick', 'fed_at' => 'today 07:10'],
+                    ['amount' => 1, 'was_skipped' => false, 'skip_reason' => null, 'fed_at' => 'today 07:45'],
+                ],
+                'fed',
+            ],
+            'empty slot' => [
+                [],
+                'upcoming',
+            ],
+        ];
+    }
+
+    /**
      * @param string  $now            Test clock time.
      * @param string  $expectedStatus Status of the 07:00 window.
      * @param boolean $expectedAlert  Expected feeding_missed value.
@@ -51,6 +78,7 @@ class DashboardTodayTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.0.feedings.schedule.0.status', $expectedStatus)
+            ->assertJsonPath('data.0.feedings.schedule.0.logs', [])
             ->assertJsonPath('data.0.alerts.feeding_missed', $expectedAlert);
     }
 
@@ -90,6 +118,7 @@ class DashboardTodayTest extends TestCase
             'was_skipped' => true,
             'skip_reason' => "wouldn't eat",
             'fed_at'      => Carbon::parse('today 07:15'),
+            'feed_time'   => '07:00',
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
@@ -138,7 +167,7 @@ class DashboardTodayTest extends TestCase
     /**
      * @return void
      */
-    public function test_log_inside_the_window_satisfies_the_time(): void
+    public function test_log_with_feed_time_satisfies_the_slot(): void
     {
         Carbon::setTestNow(Carbon::parse('today 10:00'));
         $dog = Dog::factory()->create([
@@ -146,21 +175,23 @@ class DashboardTodayTest extends TestCase
             'created_at' => now()->subDay(),
         ]);
         FeedingLog::factory()->for($dog)->create([
-            'amount' => 1,
-            'fed_at' => Carbon::parse('today 07:40'),
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 07:40'),
+            'feed_time' => '07:00',
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
             ->assertJsonPath('data.0.alerts.feeding_missed', false)
-            ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed');
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed')
+            ->assertJsonCount(1, 'data.0.feedings.schedule.0.logs');
     }
 
     /**
      * @return void
      */
-    public function test_log_outside_every_window_is_an_extra_and_clears_nothing(): void
+    public function test_log_without_feed_time_is_an_extra(): void
     {
         Carbon::setTestNow(Carbon::parse('today 13:00'));
         $dog = Dog::factory()->create([
@@ -168,14 +199,16 @@ class DashboardTodayTest extends TestCase
             'created_at' => now()->subDay(),
         ]);
         FeedingLog::factory()->for($dog)->create([
-            'amount' => 0.25,
-            'fed_at' => Carbon::parse('today 12:00'),
+            'amount'    => 0.25,
+            'fed_at'    => Carbon::parse('today 12:00'),
+            'feed_time' => null,
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
 
         $response->assertOk()
             ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.feedings.schedule.0.logs', [])
             ->assertJsonPath('data.0.alerts.feeding_missed', true)
             ->assertJsonCount(1, 'data.0.feedings.extras');
     }
@@ -183,7 +216,7 @@ class DashboardTodayTest extends TestCase
     /**
      * @return void
      */
-    public function test_logs_match_the_nearest_unsatisfied_time(): void
+    public function test_explicit_feed_time_assigns_to_correct_slot(): void
     {
         Carbon::setTestNow(Carbon::parse('today 11:00'));
         $dog = Dog::factory()->create([
@@ -191,8 +224,9 @@ class DashboardTodayTest extends TestCase
             'created_at' => now()->subDay(),
         ]);
         FeedingLog::factory()->for($dog)->create([
-            'amount' => 1,
-            'fed_at' => Carbon::parse('today 08:30'),
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 08:30'),
+            'feed_time' => '07:00',
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
@@ -203,9 +237,8 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
-     * A log timestamped before midnight belongs to yesterday. Pulling it into
-     * today would let it satisfy the 00:30 window, which sits inside the
-     * variance range of 23:30.
+     * A log timestamped before midnight belongs to yesterday. It will not
+     * appear in today's query.
      *
      * @return void
      */
@@ -217,8 +250,9 @@ class DashboardTodayTest extends TestCase
             'created_at' => now()->subDays(2),
         ]);
         FeedingLog::factory()->for($dog)->create([
-            'amount' => 1,
-            'fed_at' => Carbon::parse('yesterday 23:30'),
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('yesterday 23:30'),
+            'feed_time' => '00:30',
         ]);
 
         $response = $this->getJson('/api/dashboard/today');
@@ -350,6 +384,37 @@ class DashboardTodayTest extends TestCase
     /**
      * @return void
      */
+    public function test_schedule_entry_shape_has_time_status_and_logs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 12:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+        FeedingLog::factory()->for($dog)->create([
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 07:30'),
+            'feed_time' => '07:00',
+        ]);
+
+        $response = $this->getJson("/api/dogs/{$dog->slug}/today");
+
+        $response->assertOk();
+
+        $entry = $response->json('data.feedings.schedule.0');
+        $this->assertEqualsCanonicalizing(['time', 'status', 'logs'], array_keys($entry));
+        $this->assertCount(1, $entry['logs']);
+
+        $logKeys = array_keys($entry['logs'][0]);
+        $this->assertEqualsCanonicalizing(
+            ['log_id', 'logged_at', 'amount', 'unit', 'food_name', 'skip_reason', 'was_skipped'],
+            $logKeys,
+        );
+    }
+
+    /**
+     * @return void
+     */
     public function test_archived_dog_still_resolves_on_per_dog_today(): void
     {
         Carbon::setTestNow(Carbon::parse('today 12:00'));
@@ -389,8 +454,9 @@ class DashboardTodayTest extends TestCase
         Carbon::setTestNow(Carbon::parse('today 15:00'));
         $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
         FeedingLog::factory()->for($dog)->create([
-            'amount' => 1,
-            'fed_at' => Carbon::parse('today 07:30'),
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 07:30'),
+            'feed_time' => '07:00',
         ]);
 
         Carbon::setTestNow(Carbon::parse('today 17:00'));
@@ -414,6 +480,7 @@ class DashboardTodayTest extends TestCase
             'was_skipped' => true,
             'skip_reason' => 'not hungry',
             'fed_at'      => Carbon::parse('today 07:15'),
+            'feed_time'   => '07:00',
         ]);
 
         Carbon::setTestNow(Carbon::parse('today 17:00'));
@@ -490,5 +557,93 @@ class DashboardTodayTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.0.dog.feeding_instructions', 'Grind up the food, add water.');
+    }
+
+    /**
+     * Reproduces the Odie scenario: feed times 05:30/10:00/17:00 and a log
+     * at 08:15 explicitly assigned to the 05:30 slot. The 05:30 slot should
+     * be fed, the 10:00 slot should be upcoming, and no missed-meal alert.
+     *
+     * @return void
+     */
+    public function test_explicit_feed_time_prevents_wrong_slot_assignment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 09:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['05:30', '10:00', '17:00'],
+            'created_at' => now()->subDay(),
+        ]);
+        FeedingLog::factory()->for($dog)->create([
+            'amount'    => 0.5,
+            'fed_at'    => Carbon::parse('today 08:15'),
+            'feed_time' => '05:30',
+        ]);
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.time', '05:30')
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed')
+            ->assertJsonPath('data.0.feedings.schedule.1.time', '10:00')
+            ->assertJsonPath('data.0.feedings.schedule.1.status', 'upcoming')
+            ->assertJsonPath('data.0.feedings.schedule.2.time', '17:00')
+            ->assertJsonPath('data.0.feedings.schedule.2.status', 'upcoming')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $logStates Log attributes for the slot.
+     * @param string                     $expected  Expected slot status.
+     *
+     * @return void
+     */
+    #[DataProvider('slotStatusCases')]
+    public function test_slot_status_with_multiple_logs(array $logStates, string $expected): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 08:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+
+        foreach ($logStates as $state) {
+            FeedingLog::factory()->for($dog)->create(array_merge($state, [
+                'unit'      => 'cup',
+                'fed_at'    => Carbon::parse($state['fed_at']),
+                'feed_time' => '07:00',
+            ]));
+        }
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.status', $expected);
+    }
+
+    /**
+     * A log whose feed_time is no longer in the dog's current schedule
+     * appears as an extra.
+     *
+     * @return void
+     */
+    public function test_orphaned_feed_time_becomes_extra(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 12:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+        FeedingLog::factory()->for($dog)->create([
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 09:00'),
+            'feed_time' => '09:00',
+        ]);
+
+        $response = $this->getJson('/api/dashboard/today');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.feedings.schedule.0.logs', [])
+            ->assertJsonCount(1, 'data.0.feedings.extras');
     }
 }

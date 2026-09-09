@@ -37,15 +37,8 @@ class TodayService
             ->orderBy('fed_at')
             ->get();
 
-        [$feedSchedule, $feedExtras] = $this->matchToWindows(
-            $feedTimes,
-            $feedingLogs,
-            'fed_at',
-            $variance,
-        );
-
-        $feedScheduleEntries = $this->buildFeedingScheduleEntries($feedSchedule, $variance, $anchor);
-        $feedExtraEntries    = $this->buildFeedingExtras($feedExtras);
+        $feedScheduleEntries = $this->buildFeedingScheduleFromLogs($feedTimes, $feedingLogs, $variance, $anchor);
+        $feedExtraEntries    = $this->buildFeedingExtrasFromLogs($feedTimes, $feedingLogs);
 
         $feedingMissed = collect($feedScheduleEntries)->contains('status', 'overdue');
 
@@ -150,6 +143,105 @@ class TodayService
     }
 
     /**
+     * Builds schedule entries by grouping today's logs on their stored
+     * feed_time rather than inferring slot ownership from a variance window.
+     *
+     * @param array<int, string>          $feedTimes Scheduled HH:MM strings from the dog.
+     * @param Collection<int, FeedingLog> $logs      Today's feeding logs, ordered by fed_at.
+     * @param CarbonInterval              $variance  Window half-width for overdue threshold.
+     * @param Carbon|null                 $anchor    Feed-time anchor; pre-anchor same-day slots are untracked.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildFeedingScheduleFromLogs(array $feedTimes, Collection $logs, CarbonInterval $variance, ?Carbon $anchor): array
+    {
+        $sorted     = collect($feedTimes)->sort()->values();
+        $logsByTime = $logs->whereIn('feed_time', $sorted->all())->groupBy('feed_time');
+
+        $entries = [];
+
+        foreach ($sorted as $time) {
+            /** @var Collection<int, FeedingLog> $slotLogs */
+            $slotLogs = $logsByTime->get($time, new Collection);
+            $at       = Carbon::parse('today ' . $time);
+
+            $preAnchorSameDay = $anchor !== null
+                && $at->lt($anchor)
+                && $at->isSameDay($anchor);
+
+            $entries[] = [
+                'time'   => $time,
+                'status' => $this->deriveFeedingStatusFromLogs($slotLogs, $at, $variance, $preAnchorSameDay),
+                'logs'   => $slotLogs->values()->map(fn (FeedingLog $log): array => [
+                    'log_id'      => $log->id,
+                    'logged_at'   => $this->formatTimestamp($log->fed_at),
+                    'amount'      => $log->amount,
+                    'unit'        => $log->unit,
+                    'food_name'   => $log->food?->name,
+                    'skip_reason' => $log->skip_reason,
+                    'was_skipped' => $log->was_skipped,
+                ])->all(),
+            ];
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Logs with a null feed_time or a feed_time no longer present in the
+     * dog's current schedule are extras.
+     *
+     * @param array<int, string>          $feedTimes Current scheduled HH:MM strings.
+     * @param Collection<int, FeedingLog> $logs      Today's feeding logs.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function buildFeedingExtrasFromLogs(array $feedTimes, Collection $logs): array
+    {
+        $extras = $logs->filter(
+            fn (FeedingLog $log): bool => $log->feed_time === null || ! in_array($log->feed_time, $feedTimes, true),
+        );
+
+        $entries = [];
+
+        foreach ($extras as $log) {
+            $entries[] = [
+                'log_id'    => $log->id,
+                'food_name' => $log->food?->name,
+                'amount'    => $log->amount,
+                'unit'      => $log->unit,
+                'status'    => ($log->was_skipped || (float) $log->amount === 0.0) ? 'skipped' : 'fed',
+                'logged_at' => $this->formatTimestamp($log->fed_at),
+            ];
+        }
+
+        return $entries;
+    }
+
+    /**
+     * @param Collection<int, FeedingLog> $logs             Logs assigned to this slot.
+     * @param Carbon                      $at               Scheduled time.
+     * @param CarbonInterval              $variance         Window half-width for overdue threshold.
+     * @param boolean                     $preAnchorSameDay Whether this slot precedes the anchor on the same calendar day.
+     *
+     * @return string
+     */
+    private function deriveFeedingStatusFromLogs(Collection $logs, Carbon $at, CarbonInterval $variance, bool $preAnchorSameDay = false): string
+    {
+        if ($logs->isNotEmpty()) {
+            $hasFed = $logs->contains(fn (FeedingLog $log): bool => ! $log->was_skipped && (float) $log->amount !== 0.0);
+
+            return $hasFed ? 'fed' : 'skipped';
+        }
+
+        if ($preAnchorSameDay) {
+            return 'untracked';
+        }
+
+        return now()->gt($at->copy()->add($variance)) ? 'overdue' : 'upcoming';
+    }
+
+    /**
      * Filters times to those at-or-after a threshold datetime, so a supplement
      * assignment is never judged against times that closed before it existed.
      *
@@ -168,87 +260,6 @@ class TodayService
             $times,
             fn (string $time): bool => Carbon::parse('today ' . $time)->gte($after),
         ));
-    }
-
-    /**
-     * @param array<int, array{at: Carbon, log: Model|null}> $schedule Raw schedule from matchToWindows.
-     * @param CarbonInterval                                 $variance Window half-width.
-     * @param Carbon|null                                    $anchor   Feed-time anchor; pre-anchor same-day unsatisfied windows are untracked.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildFeedingScheduleEntries(array $schedule, CarbonInterval $variance, ?Carbon $anchor): array
-    {
-        $entries = [];
-
-        foreach ($schedule as $entry) {
-            /** @var FeedingLog|null $log */
-            $log = $entry['log'];
-            $at  = $entry['at'];
-
-            $preAnchorSameDay = $anchor !== null
-                && $at->lt($anchor)
-                && $at->isSameDay($anchor);
-
-            $entries[] = [
-                'time'        => $at->format('H:i'),
-                'status'      => $this->deriveFeedingStatus($log, $at, $variance, $preAnchorSameDay),
-                'log_id'      => $log?->id,
-                'logged_at'   => $this->formatTimestamp($log?->fed_at),
-                'amount'      => $log?->amount,
-                'unit'        => $log?->unit,
-                'food_name'   => $log?->food?->name,
-                'skip_reason' => $log?->skip_reason,
-            ];
-        }
-
-        return $entries;
-    }
-
-    /**
-     * @param list<Model> $extras Unmatched feeding logs.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function buildFeedingExtras(array $extras): array
-    {
-        $entries = [];
-
-        foreach ($extras as $extraModel) {
-            /** @var FeedingLog $log */
-            $log       = $extraModel;
-            $entries[] = [
-                'log_id'    => $log->id,
-                'food_name' => $log->food?->name,
-                'amount'    => $log->amount,
-                'unit'      => $log->unit,
-                'status'    => ($log->was_skipped || (float) $log->amount === 0.0) ? 'skipped' : 'fed',
-                'logged_at' => $this->formatTimestamp($log->fed_at),
-            ];
-        }
-
-        return $entries;
-    }
-
-    /**
-     * @param FeedingLog|null $log              Matched log or null.
-     * @param Carbon          $at               Scheduled time.
-     * @param CarbonInterval  $variance         Window half-width.
-     * @param boolean         $preAnchorSameDay Whether this window precedes the anchor on the same calendar day.
-     *
-     * @return string
-     */
-    private function deriveFeedingStatus(?FeedingLog $log, Carbon $at, CarbonInterval $variance, bool $preAnchorSameDay = false): string
-    {
-        if ($log !== null) {
-            return ($log->was_skipped || (float) $log->amount === 0.0) ? 'skipped' : 'fed';
-        }
-
-        if ($preAnchorSameDay) {
-            return 'untracked';
-        }
-
-        return now()->gt($at->copy()->add($variance)) ? 'overdue' : 'upcoming';
     }
 
     /**

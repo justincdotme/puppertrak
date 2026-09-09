@@ -18,6 +18,7 @@ storage/*.key
 
 /public/build
 /storage/pail
+/storage/backups
 
 # Claude Code
 /.claude

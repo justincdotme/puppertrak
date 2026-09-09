@@ -15,7 +15,9 @@ import type { DogToday, FeedingScheduleEntry } from '@/api/types'
 
 const mapleToday = dashboardFixture.data[0] as DogToday
 
-const MORNING_ROW = '07:00 — 1.00 cup Purina Pro Plan Sensitive Skin'
+// The morning slot has a log, so ScheduleRow renders a portion instead of a label.
+const MORNING_PORTION = '1.00 cup Purina Pro Plan Sensitive Skin'
+// The evening slot has no logs, so the label falls back to the feeding plan.
 const EVENING_ROW = '18:00 — 1.00 cup Purina Pro Plan Sensitive Skin'
 
 function capturePatches(): { id: string; body: Record<string, unknown> }[] {
@@ -39,12 +41,17 @@ function skippedEntry(time: string, reason: string | null): FeedingScheduleEntry
   return {
     time,
     status: 'skipped',
-    log_id: 6,
-    logged_at: null,
-    amount: '0.00',
-    unit: 'cup',
-    food_name: 'Purina Pro Plan Sensitive Skin',
-    skip_reason: reason,
+    logs: [
+      {
+        log_id: 6,
+        logged_at: null,
+        amount: '0.00',
+        unit: 'cup',
+        food_name: 'Purina Pro Plan Sensitive Skin',
+        skip_reason: reason,
+        was_skipped: true,
+      },
+    ],
   }
 }
 
@@ -179,10 +186,10 @@ describe('DogPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText(MORNING_ROW)).toBeInTheDocument()
+      expect(screen.getByText(MORNING_PORTION)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText(MORNING_ROW))
+    await user.click(screen.getByText(MORNING_PORTION))
 
     await waitFor(() => {
       expect(screen.getByText('Edit feeding log')).toBeInTheDocument()
@@ -208,10 +215,10 @@ describe('DogPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText(MORNING_ROW)).toBeInTheDocument()
+      expect(screen.getByText(MORNING_PORTION)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText(MORNING_ROW))
+    await user.click(screen.getByText(MORNING_PORTION))
 
     await waitFor(() => {
       expect(screen.getByText('Edit feeding log')).toBeInTheDocument()
@@ -226,7 +233,7 @@ describe('DogPage', () => {
     expect(patches[0]?.body.fed_at).toBe(new Date('2026-09-07T07:05:00-07:00').toISOString())
   })
 
-  it('prefills When with the tapped meal\u2019s scheduled time rather than now', async () => {
+  it('prefills When with the tapped meal’s scheduled time rather than now', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(2026, 8, 7, 15, 0, 0))
 
@@ -259,10 +266,10 @@ describe('DogPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText(MORNING_ROW)).toBeInTheDocument()
+      expect(screen.getByText(MORNING_PORTION)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText(MORNING_ROW))
+    await user.click(screen.getByText(MORNING_PORTION))
 
     await waitFor(() => {
       expect(screen.getByText('Edit feeding log')).toBeInTheDocument()
@@ -274,5 +281,53 @@ describe('DogPage', () => {
     await waitFor(() => {
       expect(deleted).toEqual(['5'])
     })
+  })
+
+  it('renders multiple portions for a slot with several logs', async () => {
+    serveMapleSchedule([
+      {
+        time: '07:00',
+        status: 'fed',
+        logs: [
+          {
+            log_id: 10,
+            logged_at: '2026-09-07T07:05:00-07:00',
+            amount: '0.50',
+            unit: 'cup',
+            food_name: 'Rice',
+            skip_reason: null,
+            was_skipped: false,
+          },
+          {
+            log_id: 11,
+            logged_at: '2026-09-07T07:30:00-07:00',
+            amount: '0.25',
+            unit: 'cup',
+            food_name: 'Rice',
+            skip_reason: null,
+            was_skipped: false,
+          },
+          {
+            log_id: 12,
+            logged_at: '2026-09-07T08:15:00-07:00',
+            amount: '0.25',
+            unit: 'cup',
+            food_name: 'Chicken broth',
+            skip_reason: null,
+            was_skipped: false,
+          },
+        ],
+      },
+      { time: '18:00', status: 'upcoming', logs: [] },
+    ])
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('portion-10')).toBeInTheDocument()
+    })
+
+    expect(screen.getByTestId('portion-11')).toBeInTheDocument()
+    expect(screen.getByTestId('portion-12')).toBeInTheDocument()
+    expect(screen.getByText('0.25 cup Chicken broth')).toBeInTheDocument()
   })
 })

@@ -64,3 +64,13 @@ export function formatDayHeading(iso: string): string {
 export function formatStamp(iso: string): string {
   return `${formatDayHeading(iso)} at ${formatTime(iso)}`
 }
+
+/** '7:00 AM' from a schedule entry's raw 'HH:MM' time-of-day. */
+export function formatScheduledTime(time: string): string {
+  const [hoursPart, minutesPart] = time.split(':')
+  const hours = Number(hoursPart ?? 0)
+  const minutes = Number(minutesPart ?? 0)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 || 12
+  return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`
+}

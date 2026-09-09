@@ -16,32 +16,27 @@
           {
             "time": "07:00",
             "status": "fed",
-            "log_id": 5,
-            "logged_at": "2026-09-07T07:05:00-07:00",
-            "amount": "1.00",
-            "unit": "cup",
-            "food_name": "Purina Pro Plan Sensitive Skin",
-            "skip_reason": null
+            "logs": [
+              {
+                "log_id": 5,
+                "logged_at": "2026-09-07T07:05:00-07:00",
+                "amount": "1.00",
+                "unit": "cup",
+                "food_name": "Purina Pro Plan Sensitive Skin",
+                "skip_reason": null,
+                "was_skipped": false
+              }
+            ]
           },
           {
             "time": "12:30",
             "status": "untracked",
-            "log_id": null,
-            "logged_at": null,
-            "amount": null,
-            "unit": null,
-            "food_name": null,
-            "skip_reason": null
+            "logs": []
           },
           {
             "time": "18:00",
             "status": "upcoming",
-            "log_id": null,
-            "logged_at": null,
-            "amount": null,
-            "unit": null,
-            "food_name": null,
-            "skip_reason": null
+            "logs": []
           }
         ],
         "extras": []
@@ -117,22 +112,22 @@
           {
             "time": "07:30",
             "status": "overdue",
-            "log_id": null,
-            "logged_at": null,
-            "amount": null,
-            "unit": null,
-            "food_name": null,
-            "skip_reason": null
+            "logs": []
           },
           {
             "time": "18:30",
             "status": "skipped",
-            "log_id": 6,
-            "logged_at": "2026-09-07T18:28:00-07:00",
-            "amount": "0.00",
-            "unit": "cup",
-            "food_name": "Wellness CORE Small Breed",
-            "skip_reason": "Not hungry"
+            "logs": [
+              {
+                "log_id": 6,
+                "logged_at": "2026-09-07T18:28:00-07:00",
+                "amount": "0.00",
+                "unit": "cup",
+                "food_name": "Wellness CORE Small Breed",
+                "skip_reason": "Not hungry",
+                "was_skipped": true
+              }
+            ]
           }
         ],
         "extras": []

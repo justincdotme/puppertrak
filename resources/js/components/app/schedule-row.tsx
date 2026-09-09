@@ -1,7 +1,17 @@
 import { Check, TriangleAlert } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { formatTime } from '@/lib/format'
+import { formatScheduledTime, formatTime } from '@/lib/format'
 import type { FeedingScheduleStatus } from '@/api/types'
+
+export interface PortionData {
+  logId: number
+  amount: string | null
+  unit: string | null
+  foodName: string | null
+  loggedAt: string | null
+  wasSkipped: boolean
+  skipReason: string | null
+}
 
 interface ScheduleRowProps {
   time: string
@@ -10,6 +20,8 @@ interface ScheduleRowProps {
   sublabel: string
   loggedAt: string | null
   onClick?: () => void
+  portions?: PortionData[]
+  onPortionClick?: (logId: number) => void
 }
 
 function StatusIcon({ status }: { status: FeedingScheduleStatus }) {
@@ -44,14 +56,43 @@ function StatusIcon({ status }: { status: FeedingScheduleStatus }) {
   }
 }
 
-/** '7:00 AM' from a schedule entry's raw 'HH:MM' time-of-day. */
-function formatScheduledTime(time: string): string {
-  const [hoursPart, minutesPart] = time.split(':')
-  const hours = Number(hoursPart ?? 0)
-  const minutes = Number(minutesPart ?? 0)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const displayHours = hours % 12 || 12
-  return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`
+function PortionLine({
+  portion,
+  onPortionClick,
+}: {
+  portion: PortionData
+  onPortionClick?: (logId: number) => void
+}) {
+  const portionLabel = portion.wasSkipped
+    ? `Skipped${portion.skipReason ? `: ${portion.skipReason}` : ''}`
+    : [portion.amount, portion.unit, portion.foodName].filter(Boolean).join(' ')
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className="-mx-1 block cursor-pointer rounded px-1 py-0.5 hover:bg-muted"
+      data-testid={`portion-${portion.logId}`}
+      onClick={e => {
+        e.stopPropagation()
+        onPortionClick?.(portion.logId)
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          e.stopPropagation()
+          onPortionClick?.(portion.logId)
+        }
+      }}
+    >
+      <span className="block text-sm font-medium">{portionLabel}</span>
+      {portion.loggedAt && (
+        <span className="block text-xs text-muted-foreground">
+          at {formatTime(portion.loggedAt)}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export function ScheduleRow({
@@ -61,9 +102,12 @@ export function ScheduleRow({
   sublabel,
   loggedAt,
   onClick,
+  portions,
+  onPortionClick,
 }: ScheduleRowProps) {
   const interactive = !!onClick
   const untracked = status === 'untracked'
+  const hasPortions = portions && portions.length > 0
 
   return (
     <Card
@@ -80,11 +124,21 @@ export function ScheduleRow({
         <StatusIcon status={status} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{label}</span>
-        <span className="block text-sm text-muted-foreground">{sublabel}</span>
-        {untracked && <span className="block text-xs text-muted-foreground">Not tracked</span>}
-        {loggedAt && (
-          <span className="block text-xs text-muted-foreground">at {formatTime(loggedAt)}</span>
+        {hasPortions ? (
+          <span className="grid gap-0.5">
+            {portions.map(p => (
+              <PortionLine key={p.logId} portion={p} onPortionClick={onPortionClick} />
+            ))}
+          </span>
+        ) : (
+          <>
+            <span className="block font-semibold">{label}</span>
+            <span className="block text-sm text-muted-foreground">{sublabel}</span>
+            {untracked && <span className="block text-xs text-muted-foreground">Not tracked</span>}
+            {loggedAt && (
+              <span className="block text-xs text-muted-foreground">at {formatTime(loggedAt)}</span>
+            )}
+          </>
         )}
       </span>
       <span className="flex-none font-mono text-sm whitespace-nowrap">

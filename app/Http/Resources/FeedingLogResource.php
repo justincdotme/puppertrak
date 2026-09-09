@@ -25,6 +25,7 @@ class FeedingLogResource extends JsonResource
             'amount'      => $this->amount,
             'unit'        => $this->unit,
             'fed_at'      => $this->fed_at->toIso8601String(),
+            'feed_time'   => $this->feed_time,
             'was_skipped' => $this->was_skipped,
             'skip_reason' => $this->skip_reason,
             'notes'       => $this->notes,

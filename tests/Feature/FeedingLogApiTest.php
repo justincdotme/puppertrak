@@ -134,4 +134,87 @@ class FeedingLogApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.dog_id', $maple->id);
     }
+
+    /**
+     * @return void
+     */
+    public function test_store_accepts_a_scheduled_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
+
+        $response = $this->postJson("/api/dogs/{$dog->slug}/feeding-logs", [
+            'amount'    => '1.00',
+            'unit'      => 'cup',
+            'feed_time' => '07:00',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.feed_time', '07:00');
+    }
+
+    /**
+     * @return void
+     */
+    public function test_store_accepts_null_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00']]);
+
+        $response = $this->postJson("/api/dogs/{$dog->slug}/feeding-logs", [
+            'amount'    => '1.00',
+            'unit'      => 'cup',
+            'feed_time' => null,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.feed_time', null);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_store_rejects_an_unscheduled_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
+
+        $response = $this->postJson("/api/dogs/{$dog->slug}/feeding-logs", [
+            'amount'    => '1.00',
+            'unit'      => 'cup',
+            'feed_time' => '12:00',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('feed_time');
+    }
+
+    /**
+     * @return void
+     */
+    public function test_update_accepts_a_valid_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
+        $log = FeedingLog::factory()->for($dog)->create(['feed_time' => '07:00']);
+
+        $response = $this->putJson("/api/feeding-logs/{$log->id}", [
+            'feed_time' => '18:00',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.feed_time', '18:00');
+    }
+
+    /**
+     * @return void
+     */
+    public function test_update_rejects_an_unscheduled_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00']]);
+        $log = FeedingLog::factory()->for($dog)->create(['feed_time' => '07:00']);
+
+        $response = $this->putJson("/api/feeding-logs/{$log->id}", [
+            'feed_time' => '15:00',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('feed_time');
+    }
 }

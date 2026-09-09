@@ -18,6 +18,7 @@ import { useNotification } from '@/components/app/use-notification'
 import { formatDate, formatStamp } from '@/lib/format'
 import type {
   DogSupplement,
+  FeedingLogEntry,
   FeedingScheduleEntry,
   HealthNote,
   SupplementScheduleEntry,
@@ -51,6 +52,7 @@ export function DogPage() {
 
   const [feedOpen, setFeedOpen] = useState(false)
   const [feedEntry, setFeedEntry] = useState<FeedingScheduleEntry | undefined>(undefined)
+  const [feedLogEntry, setFeedLogEntry] = useState<FeedingLogEntry | undefined>(undefined)
   const [noteOpen, setNoteOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<HealthNote | undefined>(undefined)
   const [assignOpen, setAssignOpen] = useState(false)
@@ -60,8 +62,15 @@ export function DogPage() {
   if (dogLoading) return null
   if (!dog) return <Navigate to="/" replace />
 
-  const openFeedForSchedule = (entry: FeedingScheduleEntry) => {
+  const openFeedForSlot = (entry: FeedingScheduleEntry) => {
     setFeedEntry(entry)
+    setFeedLogEntry(undefined)
+    setFeedOpen(true)
+  }
+
+  const openFeedForLog = (entry: FeedingScheduleEntry, logId: number) => {
+    setFeedEntry(entry)
+    setFeedLogEntry(entry.logs.find(l => l.log_id === logId))
     setFeedOpen(true)
   }
 
@@ -151,19 +160,21 @@ export function DogPage() {
               <p className="text-sm text-muted-foreground">{dog.feeding_instructions}</p>
             )}
             {today.feedings.schedule.map(entry => {
-              const foodLabel = entry.food_name ?? firstPlan?.food_name ?? 'Food not set'
-              const amountLabel =
-                entry.amount && entry.unit
-                  ? `${entry.amount} ${entry.unit}`
-                  : firstPlan
-                    ? `${firstPlan.amount} ${firstPlan.unit}`
-                    : ''
+              const foodLabel = firstPlan?.food_name ?? 'Food not set'
+              const amountLabel = firstPlan ? `${firstPlan.amount} ${firstPlan.unit}` : ''
 
               let sublabel = 'Upcoming'
-              if (entry.status === 'fed') sublabel = 'Logged'
-              else if (entry.status === 'skipped')
-                sublabel = entry.skip_reason ? `Skipped: ${entry.skip_reason}` : 'Skipped'
-              else if (entry.status === 'overdue') sublabel = 'Overdue'
+              if (entry.status === 'overdue') sublabel = 'Overdue'
+
+              const portions = entry.logs.map(log => ({
+                logId: log.log_id,
+                amount: log.amount,
+                unit: log.unit,
+                foodName: log.food_name,
+                loggedAt: log.logged_at,
+                wasSkipped: log.was_skipped,
+                skipReason: log.skip_reason,
+              }))
 
               return (
                 <ScheduleRow
@@ -172,8 +183,10 @@ export function DogPage() {
                   status={entry.status}
                   label={`${entry.time} — ${amountLabel} ${foodLabel}`}
                   sublabel={sublabel}
-                  loggedAt={entry.logged_at}
-                  onClick={() => openFeedForSchedule(entry)}
+                  loggedAt={null}
+                  onClick={() => openFeedForSlot(entry)}
+                  portions={portions}
+                  onPortionClick={logId => openFeedForLog(entry, logId)}
                 />
               )
             })}
@@ -319,6 +332,7 @@ export function DogPage() {
             className="w-full text-lg sm:flex-1"
             onClick={() => {
               setFeedEntry(undefined)
+              setFeedLogEntry(undefined)
               setFeedOpen(true)
             }}
           >
@@ -357,6 +371,7 @@ export function DogPage() {
         dogToday={today ?? undefined}
         plans={dog.feeding_plans}
         entry={feedEntry}
+        logEntry={feedLogEntry}
       />
       <SupplementSheet
         open={suppOpen}

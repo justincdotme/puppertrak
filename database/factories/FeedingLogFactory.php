@@ -28,6 +28,7 @@ class FeedingLogFactory extends Factory
             'amount'      => fake()->randomFloat(2, 0.25, 2),
             'unit'        => fake()->randomElement(['cup', 'g', 'oz', 'scoop']),
             'fed_at'      => now(),
+            'feed_time'   => null,
             'was_skipped' => false,
             'skip_reason' => null,
             'notes'       => null,
