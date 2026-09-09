@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ScheduleRow } from './schedule-row'
+import type { PortionData } from './schedule-row'
 
 describe('ScheduleRow', () => {
   it('shows the scheduled time in the mono slot with the logged time as a secondary detail', () => {
@@ -56,5 +57,53 @@ describe('ScheduleRow', () => {
 
     await user.click(row)
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders multiple portions and fires the correct callback when one is tapped', async () => {
+    const user = userEvent.setup()
+    const onPortionClick = vi.fn()
+    const onClick = vi.fn()
+
+    const portions: PortionData[] = [
+      {
+        logId: 10,
+        amount: '0.50',
+        unit: 'cup',
+        foodName: 'Rice',
+        loggedAt: '2026-09-07T07:05:00-07:00',
+        wasSkipped: false,
+        skipReason: null,
+      },
+      {
+        logId: 11,
+        amount: '0.25',
+        unit: 'cup',
+        foodName: 'Chicken broth',
+        loggedAt: '2026-09-07T07:30:00-07:00',
+        wasSkipped: false,
+        skipReason: null,
+      },
+    ]
+
+    render(
+      <ScheduleRow
+        time="07:00"
+        status="fed"
+        label="plan fallback"
+        sublabel="Logged"
+        loggedAt={null}
+        onClick={onClick}
+        portions={portions}
+        onPortionClick={onPortionClick}
+      />
+    )
+
+    expect(screen.getByText('0.50 cup Rice')).toBeInTheDocument()
+    expect(screen.getByText('0.25 cup Chicken broth')).toBeInTheDocument()
+    expect(screen.queryByText('plan fallback')).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('0.25 cup Chicken broth'))
+    expect(onPortionClick).toHaveBeenCalledWith(11)
+    expect(onClick).not.toHaveBeenCalled()
   })
 })

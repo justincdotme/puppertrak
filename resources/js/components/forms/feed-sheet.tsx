@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { formatScheduledTime } from '@/lib/format'
 import { useNotification } from '@/components/app/use-notification'
 import { isoToLocal, nowLocal, todayAtLocal, toIso } from '@/lib/datetime'
 import {
@@ -28,9 +29,10 @@ import {
 } from '@/hooks/use-feeding-logs'
 import { useFoods } from '@/hooks/use-foods'
 import type { FeedingLogPayload } from '@/api/feeding-logs'
-import type { DogToday, FeedingPlan, FeedingScheduleEntry } from '@/api/types'
+import type { DogToday, FeedingLogEntry, FeedingPlan, FeedingScheduleEntry } from '@/api/types'
 
 const UNITS = ['cup', 'g', 'oz', 'scoop'] as const
+const UNSCHEDULED = '_unscheduled'
 
 interface FeedSheetProps {
   open: boolean
@@ -39,6 +41,7 @@ interface FeedSheetProps {
   dogToday?: DogToday
   plans?: FeedingPlan[]
   entry?: FeedingScheduleEntry
+  logEntry?: FeedingLogEntry
 }
 
 interface FeedSheetBodyProps {
@@ -47,17 +50,33 @@ interface FeedSheetBodyProps {
   dogToday?: DogToday
   plans?: FeedingPlan[]
   entry?: FeedingScheduleEntry
+  logEntry?: FeedingLogEntry
 }
 
-/** An existing log keeps its own time, a tapped row its slot, ad hoc logging now. */
-function initialFedAt(entry?: FeedingScheduleEntry): string {
-  if (entry?.logged_at) return isoToLocal(entry.logged_at)
+function initialFedAt(entry?: FeedingScheduleEntry, logEntry?: FeedingLogEntry): string {
+  if (logEntry?.logged_at) return isoToLocal(logEntry.logged_at)
   if (entry) return todayAtLocal(entry.time)
-
   return nowLocal()
 }
 
-function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSheetBodyProps) {
+function initialMealTime(
+  scheduleEntries: FeedingScheduleEntry[],
+  entry?: FeedingScheduleEntry
+): string {
+  if (entry) return entry.time
+
+  const firstUnfed = scheduleEntries.find(e => e.logs.length === 0)
+  return firstUnfed?.time ?? UNSCHEDULED
+}
+
+function FeedSheetBody({
+  onOpenChange,
+  dogSlug,
+  dogToday,
+  plans,
+  entry,
+  logEntry,
+}: FeedSheetBodyProps) {
   const { data: foods } = useFoods()
   const createLog = useCreateFeedingLog()
   const updateLog = useUpdateFeedingLog()
@@ -65,18 +84,25 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSh
   const { notify } = useNotification()
 
   const firstPlan = plans?.[0]
-  const logId = entry?.log_id ?? null
+  const logId = logEntry?.log_id ?? null
   const isEdit = logId !== null
 
+  const scheduleEntries = dogToday?.feedings.schedule ?? []
+
+  const [mealTime, setMealTime] = useState(initialMealTime(scheduleEntries, entry))
   const [foodId, setFoodId] = useState(isEdit ? '' : String(firstPlan?.food_id ?? ''))
-  const [amount, setAmount] = useState(entry?.amount ?? firstPlan?.amount ?? '')
-  const [unit, setUnit] = useState(entry?.unit ?? firstPlan?.unit ?? '')
-  const [fedAt, setFedAt] = useState(initialFedAt(entry))
-  const [skipped, setSkipped] = useState(entry?.status === 'skipped')
-  const [reason, setReason] = useState(entry?.skip_reason ?? '')
+  const [amount, setAmount] = useState(logEntry?.amount ?? firstPlan?.amount ?? '')
+  const [unit, setUnit] = useState(logEntry?.unit ?? firstPlan?.unit ?? '')
+  const [fedAt, setFedAt] = useState(initialFedAt(entry, logEntry))
+  const [skipped, setSkipped] = useState(logEntry?.was_skipped ?? false)
+  const [reason, setReason] = useState(logEntry?.skip_reason ?? '')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  function feedTimePayload(): string | null {
+    return mealTime === UNSCHEDULED ? null : mealTime
+  }
 
   function submit() {
     if (skipped && reason.trim().length < 3) {
@@ -91,14 +117,13 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSh
     const trimmedNotes = notes.trim()
 
     if (logId !== null) {
-      // The stored food and notes never reach this sheet, so omitting the ones
-      // the user left alone stops a save from wiping values it never showed.
       const patch: Partial<FeedingLogPayload> = {
         amount: skipped ? 0 : Number(amount),
         unit,
         fed_at: toIso(fedAt),
         was_skipped: skipped,
         skip_reason: skipped ? reason.trim() : null,
+        feed_time: feedTimePayload(),
       }
 
       if (foodId) patch.food_id = Number(foodId)
@@ -126,6 +151,7 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSh
           was_skipped: skipped,
           skip_reason: skipped ? reason.trim() : null,
           notes: trimmedNotes || null,
+          feed_time: feedTimePayload(),
         },
       },
       {
@@ -167,10 +193,27 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSh
       )}
 
       <div className="grid gap-2">
+        <Label>Meal</Label>
+        <Select value={mealTime} onValueChange={setMealTime}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {scheduleEntries.map(e => (
+              <SelectItem key={e.time} value={e.time}>
+                {formatScheduledTime(e.time)}
+              </SelectItem>
+            ))}
+            <SelectItem value={UNSCHEDULED}>Unscheduled meal</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-2">
         <Label>Food</Label>
         <Select value={foodId} onValueChange={setFoodId}>
           <SelectTrigger>
-            <SelectValue placeholder={entry?.food_name ?? 'Pick a food'} />
+            <SelectValue placeholder={logEntry?.food_name ?? 'Pick a food'} />
           </SelectTrigger>
           <SelectContent>
             {(foods ?? []).map(f => (
@@ -291,7 +334,15 @@ function FeedSheetBody({ onOpenChange, dogSlug, dogToday, plans, entry }: FeedSh
 }
 
 /** Remounts the body each time open transitions to true so state resets. */
-export function FeedSheet({ open, onOpenChange, dogSlug, dogToday, plans, entry }: FeedSheetProps) {
+export function FeedSheet({
+  open,
+  onOpenChange,
+  dogSlug,
+  dogToday,
+  plans,
+  entry,
+  logEntry,
+}: FeedSheetProps) {
   const [revision, setRevision] = useState(0)
 
   function handleOpenChange(next: boolean) {
@@ -310,6 +361,7 @@ export function FeedSheet({ open, onOpenChange, dogSlug, dogToday, plans, entry 
             dogToday={dogToday}
             plans={plans}
             entry={entry}
+            logEntry={logEntry}
           />
         )}
       </SheetContent>

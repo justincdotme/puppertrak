@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['dog_id', 'food_id', 'amount', 'unit', 'fed_at', 'was_skipped', 'skip_reason', 'notes'])]
+#[Fillable(['dog_id', 'food_id', 'amount', 'unit', 'fed_at', 'feed_time', 'was_skipped', 'skip_reason', 'notes'])]
 class FeedingLog extends Model
 {
     /** @use HasFactory<FeedingLogFactory> */

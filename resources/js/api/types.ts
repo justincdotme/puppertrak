@@ -117,8 +117,6 @@ export interface HistoryDay {
   entries: HistoryEntry[]
 }
 
-// Field names mirror App\Services\TodayService::forDog() exactly.
-
 export interface DogTodaySummary {
   id: number
   slug: string
@@ -132,15 +130,20 @@ export interface DogTodaySummary {
 
 export type FeedingScheduleStatus = 'fed' | 'skipped' | 'overdue' | 'upcoming' | 'untracked'
 
-export interface FeedingScheduleEntry {
-  time: string
-  status: FeedingScheduleStatus
-  log_id: number | null
+export interface FeedingLogEntry {
+  log_id: number
   logged_at: string | null
   amount: string | null
   unit: string | null
   food_name: string | null
   skip_reason: string | null
+  was_skipped: boolean
+}
+
+export interface FeedingScheduleEntry {
+  time: string
+  status: FeedingScheduleStatus
+  logs: FeedingLogEntry[]
 }
 
 export interface FeedingExtraEntry {

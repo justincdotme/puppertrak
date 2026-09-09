@@ -18,6 +18,7 @@ export interface FeedingLogPayload {
   was_skipped?: boolean
   skip_reason?: string | null
   notes?: string | null
+  feed_time?: string | null
 }
 
 export async function fetchFeedingLogs(filters: FeedingLogFilters = {}): Promise<FeedingLog[]> {
