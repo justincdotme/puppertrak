@@ -216,6 +216,37 @@ class DashboardTodayTest extends TestCase
     /**
      * @return void
      */
+    public function test_editing_a_logs_feed_time_clears_and_restores_the_missed_meal_alert(): void
+    {
+        Carbon::setTestNow(Carbon::parse('today 13:00'));
+        $dog = Dog::factory()->create([
+            'feed_times' => ['07:00'],
+            'created_at' => now()->subDay(),
+        ]);
+        $log = FeedingLog::factory()->for($dog)->create([
+            'amount'    => 1,
+            'fed_at'    => Carbon::parse('today 12:00'),
+            'feed_time' => null,
+        ]);
+
+        $this->patchJson("/api/feeding-logs/{$log->id}", ['feed_time' => '07:00'])->assertOk();
+
+        $this->getJson('/api/dashboard/today')
+            ->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'fed')
+            ->assertJsonPath('data.0.alerts.feeding_missed', false);
+
+        $this->patchJson("/api/feeding-logs/{$log->id}", ['feed_time' => null])->assertOk();
+
+        $this->getJson('/api/dashboard/today')
+            ->assertOk()
+            ->assertJsonPath('data.0.feedings.schedule.0.status', 'overdue')
+            ->assertJsonPath('data.0.alerts.feeding_missed', true);
+    }
+
+    /**
+     * @return void
+     */
     public function test_explicit_feed_time_assigns_to_correct_slot(): void
     {
         Carbon::setTestNow(Carbon::parse('today 11:00'));
@@ -560,9 +591,8 @@ class DashboardTodayTest extends TestCase
     }
 
     /**
-     * Reproduces the Odie scenario: feed times 05:30/10:00/17:00 and a log
-     * at 08:15 explicitly assigned to the 05:30 slot. The 05:30 slot should
-     * be fed, the 10:00 slot should be upcoming, and no missed-meal alert.
+     * A late meal belongs to the slot it was logged against, even when its
+     * timestamp sits closer to the next one.
      *
      * @return void
      */

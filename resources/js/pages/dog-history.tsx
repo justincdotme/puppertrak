@@ -41,7 +41,13 @@ export function DogHistoryPage() {
         )}
       </Screen>
 
-      <LogEditSheet open={editOpen} onOpenChange={setEditOpen} entry={editEntry} dogSlug={slug} />
+      <LogEditSheet
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        entry={editEntry}
+        dogSlug={slug}
+        feedTimes={dog?.feed_times ?? []}
+      />
     </div>
   )
 }

@@ -43,6 +43,7 @@ function renderEditForm(slug: string) {
         <MemoryRouter initialEntries={[`/dogs/${slug}/edit`]}>
           <Routes>
             <Route path="/dogs/:slug/edit" element={<DogFormPage />} />
+            <Route path="/dogs/:slug" element={null} />
           </Routes>
         </MemoryRouter>
       </NotificationProvider>
@@ -131,10 +132,6 @@ describe('DogFormPage create mode', () => {
   })
 
   it('posts a feeding plan for the newly created dog', async () => {
-    // The create path calls createFeedingPlan(created.slug, planPayload) after
-    // the dog POST succeeds. We verify the plan POST fires with the new dog's
-    // slug by intercepting both requests.
-    //
     // Radix Select dropdowns don't open reliably in jsdom (no scrollIntoView,
     // no pointer capture), so we test by importing createFeedingPlan directly
     // and calling the code path that the onSubmit handler would invoke.

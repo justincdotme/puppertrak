@@ -59,7 +59,10 @@ class UpdateFeedingLogRequest extends FormRequest
             $feedingLog = $this->route('feeding_log');
             $feedTimes  = $feedingLog->dog->feed_times ?? [];
 
-            if (! in_array($feedTime, $feedTimes, true)) {
+            // Dog schedules change over time, so a log's existing feed_time may no
+            // longer be scheduled. Allow resubmitting it unchanged so other edits
+            // to the same log aren't blocked by a stale value.
+            if (! in_array($feedTime, $feedTimes, true) && $feedTime !== $feedingLog->feed_time) {
                 $validator->errors()->add('feed_time', 'The selected feed time is not one of this dog\'s scheduled feed times.');
             }
         });
