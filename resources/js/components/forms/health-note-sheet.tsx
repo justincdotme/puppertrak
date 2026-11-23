@@ -41,7 +41,7 @@ export function HealthNoteSheet({ open, onOpenChange, dogSlug, note }: HealthNot
 
   const isEdit = !!note
 
-  const form = useForm<HealthNoteValues>({
+  const form = useForm<z.input<typeof schema>, unknown, HealthNoteValues>({
     resolver: zodResolver(schema),
     defaultValues: { occurred_at: nowLocal(), title: '', body: '' },
   })
