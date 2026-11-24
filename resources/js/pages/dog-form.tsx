@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form'
+import type { Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -151,7 +152,7 @@ function DogFormInner({ existing }: DogFormInnerProps) {
   const createPlan = useCreateFeedingPlan(slug)
   const updatePlan = useUpdateFeedingPlan(slug, existing?.feeding_plans?.[0]?.id ?? 0)
 
-  const form = useForm<DogFormValues>({
+  const form = useForm<z.input<typeof schema>, unknown, DogFormValues>({
     resolver: zodResolver(schema),
     defaultValues: existing ? dogToFormValues(existing) : EMPTY_VALUES,
   })
@@ -524,7 +525,7 @@ function FoodSelectField({
   control,
 }: {
   foods?: Food[]
-  control: ReturnType<typeof useForm<DogFormValues>>['control']
+  control: Control<z.input<typeof schema>, unknown, DogFormValues>
 }) {
   return (
     <FormField

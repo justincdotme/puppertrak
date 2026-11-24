@@ -217,4 +217,40 @@ class FeedingLogApiTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors('feed_time');
     }
+
+    /**
+     * @return void
+     */
+    public function test_update_accepts_null_feed_time(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00']]);
+        $log = FeedingLog::factory()->for($dog)->create(['feed_time' => '07:00']);
+
+        $response = $this->putJson("/api/feeding-logs/{$log->id}", [
+            'feed_time' => null,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.feed_time', null);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_update_accepts_an_unscheduled_feed_time_when_it_matches_the_log(): void
+    {
+        $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);
+        $log = FeedingLog::factory()->for($dog)->create(['feed_time' => '07:00']);
+
+        $dog->update(['feed_times' => ['18:00']]);
+
+        $response = $this->putJson("/api/feeding-logs/{$log->id}", [
+            'feed_time' => '07:00',
+            'notes'     => 'corrected note',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.feed_time', '07:00')
+            ->assertJsonPath('data.notes', 'corrected note');
+    }
 }

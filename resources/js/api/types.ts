@@ -64,6 +64,7 @@ export interface FeedingLog {
   amount: string
   unit: string
   fed_at: string
+  feed_time: string | null
   was_skipped: boolean
   skip_reason: string | null
   notes: string | null

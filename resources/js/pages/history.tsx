@@ -86,10 +86,9 @@ export function HistoryPage() {
     [feedingLogs, supplementLogs]
   )
 
-  const editDogSlug = useMemo(() => {
+  const editDog = useMemo(() => {
     if (!editEntry || !dogs) return undefined
-    const dog = dogs.find(d => d.id === editEntry.dog_id)
-    return dog?.slug
+    return dogs.find(d => d.id === editEntry.dog_id)
   }, [editEntry, dogs])
 
   function handleEdit(entry: HistoryEntry) {
@@ -157,7 +156,8 @@ export function HistoryPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         entry={editEntry}
-        dogSlug={editDogSlug}
+        dogSlug={editDog?.slug}
+        feedTimes={editDog?.feed_times ?? []}
       />
     </div>
   )

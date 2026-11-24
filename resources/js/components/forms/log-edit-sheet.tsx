@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { MealSlotField } from '@/components/forms/meal-slot-field'
+import { mealSlotPayload, UNSCHEDULED } from '@/lib/meal-slot'
 import { useNotification } from '@/components/app/use-notification'
 import { isoToLocal, toIso } from '@/lib/datetime'
 import { useUpdateFeedingLog, useDeleteFeedingLog } from '@/hooks/use-feeding-logs'
@@ -25,15 +27,27 @@ interface LogEditSheetProps {
   onOpenChange: (open: boolean) => void
   entry: HistoryEntry | null
   dogSlug?: string
+  feedTimes?: string[]
 }
 
-export function LogEditSheet({ open, onOpenChange, entry, dogSlug }: LogEditSheetProps) {
+export function LogEditSheet({
+  open,
+  onOpenChange,
+  entry,
+  dogSlug,
+  feedTimes = [],
+}: LogEditSheetProps) {
   if (!entry) return null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="grid gap-4">
-        <LogEditBody entry={entry} dogSlug={dogSlug} onClose={() => onOpenChange(false)} />
+        <LogEditBody
+          entry={entry}
+          dogSlug={dogSlug}
+          feedTimes={feedTimes}
+          onClose={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   )
@@ -42,10 +56,12 @@ export function LogEditSheet({ open, onOpenChange, entry, dogSlug }: LogEditShee
 function LogEditBody({
   entry,
   dogSlug,
+  feedTimes,
   onClose,
 }: {
   entry: HistoryEntry
   dogSlug?: string
+  feedTimes: string[]
   onClose: () => void
 }) {
   const updateFeeding = useUpdateFeedingLog()
@@ -59,6 +75,9 @@ function LogEditBody({
 
   const [amount, setAmount] = useState(initialAmount)
   const [unit, setUnit] = useState(entry.unit)
+  const [mealSlot, setMealSlot] = useState(
+    entry.type === 'feeding' ? (entry.feed_time ?? UNSCHEDULED) : UNSCHEDULED
+  )
   const [timestamp, setTimestamp] = useState(isoToLocal(initialTimestamp))
   const [skipped, setSkipped] = useState(entry.was_skipped)
   const [reason, setReason] = useState(entry.skip_reason ?? '')
@@ -80,6 +99,7 @@ function LogEditBody({
             amount: skipped ? 0 : Number(amount),
             unit,
             fed_at: toIso(timestamp),
+            feed_time: mealSlotPayload(mealSlot),
             was_skipped: skipped,
             skip_reason: skipped ? reason.trim() : null,
             notes: notes.trim() || null,
@@ -154,6 +174,10 @@ function LogEditBody({
       <SheetHeader>
         <SheetTitle>{title}</SheetTitle>
       </SheetHeader>
+
+      {entry.type === 'feeding' && (
+        <MealSlotField times={feedTimes} value={mealSlot} onChange={setMealSlot} />
+      )}
 
       <div className="grid grid-cols-[1fr_7rem] gap-2">
         <div className="grid gap-2">

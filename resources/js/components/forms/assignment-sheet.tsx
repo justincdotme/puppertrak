@@ -38,8 +38,8 @@ import type { Dog, DogSupplement, Supplement } from '@/api/types'
 
 const schema = z.object({
   dogSlug: z.string().min(1, 'Pick a dog.'),
-  supplement_id: z.coerce.number().min(1, 'Pick a supplement.'),
-  dose: z.coerce.number().min(0, 'Dose must be 0 or more.'),
+  supplement_id: z.coerce.number<number>().min(1, 'Pick a supplement.'),
+  dose: z.coerce.number<number>().min(0, 'Dose must be 0 or more.'),
   unit: z.string().min(1, 'Unit is required.'),
   times: z.array(z.string()),
   notes: z.string().optional().default(''),
@@ -72,7 +72,7 @@ export function AssignmentSheet({
   const createAssignment = useCreateDogSupplement(dogSlug)
   const updateAssignment = useUpdateDogSupplement(dogSlug, assignment?.id ?? 0)
 
-  const form = useForm<AssignmentFormValues>({
+  const form = useForm<z.input<typeof schema>, unknown, AssignmentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       dogSlug: dogSlug,

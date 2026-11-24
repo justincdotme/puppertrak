@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { formatScheduledTime } from '@/lib/format'
+import { MealSlotField } from '@/components/forms/meal-slot-field'
+import { mealSlotPayload, UNSCHEDULED } from '@/lib/meal-slot'
 import { useNotification } from '@/components/app/use-notification'
 import { isoToLocal, nowLocal, todayAtLocal, toIso } from '@/lib/datetime'
 import {
@@ -32,7 +33,6 @@ import type { FeedingLogPayload } from '@/api/feeding-logs'
 import type { DogToday, FeedingLogEntry, FeedingPlan, FeedingScheduleEntry } from '@/api/types'
 
 const UNITS = ['cup', 'g', 'oz', 'scoop'] as const
-const UNSCHEDULED = '_unscheduled'
 
 interface FeedSheetProps {
   open: boolean
@@ -100,10 +100,6 @@ function FeedSheetBody({
   const [error, setError] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  function feedTimePayload(): string | null {
-    return mealTime === UNSCHEDULED ? null : mealTime
-  }
-
   function submit() {
     if (skipped && reason.trim().length < 3) {
       setError(true)
@@ -123,7 +119,7 @@ function FeedSheetBody({
         fed_at: toIso(fedAt),
         was_skipped: skipped,
         skip_reason: skipped ? reason.trim() : null,
-        feed_time: feedTimePayload(),
+        feed_time: mealSlotPayload(mealTime),
       }
 
       if (foodId) patch.food_id = Number(foodId)
@@ -151,7 +147,7 @@ function FeedSheetBody({
           was_skipped: skipped,
           skip_reason: skipped ? reason.trim() : null,
           notes: trimmedNotes || null,
-          feed_time: feedTimePayload(),
+          feed_time: mealSlotPayload(mealTime),
         },
       },
       {
@@ -192,22 +188,11 @@ function FeedSheetBody({
         <p className="text-sm text-muted-foreground">{dogToday.dog.feeding_instructions}</p>
       )}
 
-      <div className="grid gap-2">
-        <Label>Meal</Label>
-        <Select value={mealTime} onValueChange={setMealTime}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {scheduleEntries.map(e => (
-              <SelectItem key={e.time} value={e.time}>
-                {formatScheduledTime(e.time)}
-              </SelectItem>
-            ))}
-            <SelectItem value={UNSCHEDULED}>Unscheduled meal</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <MealSlotField
+        times={scheduleEntries.map(e => e.time)}
+        value={mealTime}
+        onChange={setMealTime}
+      />
 
       <div className="grid gap-2">
         <Label>Food</Label>

@@ -14,7 +14,7 @@
     "dependencies": {
         "@fontsource/ibm-plex-mono": "^5.2.7",
         "@fontsource/ibm-plex-sans": "^5.2.8",
-        "@hookform/resolvers": "^3.9.1",
+        "@hookform/resolvers": "^5.9.2",
         "@radix-ui/react-dialog": "^1.1.17",
         "@radix-ui/react-label": "^2.1.10",
         "@radix-ui/react-select": "^2.3.1",
@@ -33,7 +33,7 @@
         "react-hook-form": "^7.52.2",
         "react-router-dom": "^7.1.1",
         "tailwind-merge": "^3.6.0",
-        "zod": "^3.23.11"
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.5",
