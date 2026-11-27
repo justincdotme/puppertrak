@@ -24,7 +24,7 @@ class DogResource extends JsonResource
             'breed'                 => $this->breed,
             'date_of_birth'         => $this->date_of_birth?->format('Y-m-d'),
             'age_years'             => $this->age_years,
-            'age'                   => $this->date_of_birth ? $this->date_of_birth->age : $this->age_years,
+            'age'                   => $this->age,
             'sex'                   => $this->sex,
             'is_neutered_or_spayed' => $this->is_neutered_or_spayed,
             'weight'                => $this->weight,

@@ -32,13 +32,20 @@ export interface DogFormValues {
   unit: string
 }
 
+// Shows the age as it stands today; the server keeps the original anchor when
+// this unchanged value comes back on save.
+function ageForForm(dog: Dog): string {
+  const age = dog.date_of_birth ? dog.age_years : dog.age
+  return age != null ? String(age) : ''
+}
+
 export function dogToFormValues(dog: Dog): DogFormValues {
   const firstPlan = dog.feeding_plans?.[0]
   return {
     name: dog.name,
     breed: dog.breed ?? '',
     date_of_birth: dog.date_of_birth ?? '',
-    age_years: dog.age_years != null ? String(dog.age_years) : '',
+    age_years: ageForForm(dog),
     sex: dog.sex ?? '',
     is_neutered_or_spayed: dog.is_neutered_or_spayed,
     weight: dog.weight ?? '',
