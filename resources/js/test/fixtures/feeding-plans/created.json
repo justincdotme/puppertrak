@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": 4,
+    "dog_id": 2,
+    "food_id": 4,
+    "food_name": "Blue Buffalo Wilderness",
+    "amount": "0.50",
+    "unit": "cup",
+    "notes": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": 5,
+    "dog_id": 1,
+    "food_id": 1,
+    "food_name": "Purina Pro Plan Sensitive Skin",
+    "amount": "1.25",
+    "unit": "cup",
+    "fed_at": "2026-09-07T07:05:00-07:00",
+    "was_skipped": false,
+    "skip_reason": null,
+    "notes": "Extra hungry this morning."
+  }
+}

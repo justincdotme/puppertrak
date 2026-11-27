@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": 5,
+    "dog_id": 2,
+    "supplement_id": 5,
+    "supplement_name": "Glucosamine chew",
+    "default_unit": "chew",
+    "dose": "1.00",
+    "unit": "chew",
+    "frequency": "daily",
+    "interval_days": null,
+    "start_date": null,
+    "times": ["18:30"],
+    "notes": null
+  }
+}

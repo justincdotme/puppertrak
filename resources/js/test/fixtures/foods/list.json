@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Purina Pro Plan Sensitive Skin",
+      "bag_description": "Salmon & rice formula, 30 lb bag",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "name": "Wellness CORE Small Breed",
+      "bag_description": "Grain-free chicken formula, 4 lb bag",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "name": "Ziwi Peak Air-Dried",
+      "bag_description": "Lamb topper, 2.2 lb bag",
+      "notes": null
+    },
+    {
+      "id": 4,
+      "name": "Blue Buffalo Wilderness",
+      "bag_description": "Chicken formula, 24 lb bag",
+      "notes": "Unused - kept as a backup bag."
+    }
+  ]
+}

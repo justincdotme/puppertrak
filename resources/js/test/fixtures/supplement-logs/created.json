@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": 4,
+    "dog_id": 1,
+    "dog_supplement_id": 1,
+    "supplement_name": "Fish oil",
+    "amount_given": "1.00",
+    "unit": "pump",
+    "given_at": "2026-09-07T07:05:00-07:00",
+    "was_skipped": false,
+    "skip_reason": null,
+    "notes": null
+  }
+}

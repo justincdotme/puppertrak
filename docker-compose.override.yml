@@ -1,0 +1,14 @@
+services:
+    # Vite compiles assets into public/build so nginx serves them same-origin.
+    # The dev server is intentionally avoided: behind Caddy its hot file points
+    # the browser at 0.0.0.0:5173, which is unreachable and mixed content on HTTPS.
+    vite:
+        image: node:22-alpine
+        restart: unless-stopped
+        working_dir: /var/www/html
+        user: "${PUPPERTRAK_UID:-1000}:${PUPPERTRAK_GID:-1000}"
+        command: sh -c "npm install && npm run build -- --watch"
+        volumes:
+            - .:/var/www/html
+        networks:
+            - app-network

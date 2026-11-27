@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Fish oil",
+      "default_unit": "pump",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "name": "Cosequin",
+      "default_unit": "chew",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "name": "FortiFlora",
+      "default_unit": "sachet",
+      "notes": null
+    },
+    {
+      "id": 4,
+      "name": "Carprofen (Rimadyl) 75 mg",
+      "default_unit": "tablet",
+      "notes": null
+    },
+    {
+      "id": 5,
+      "name": "Glucosamine chew",
+      "default_unit": "chew",
+      "notes": "Unused - kept for reference."
+    }
+  ]
+}
