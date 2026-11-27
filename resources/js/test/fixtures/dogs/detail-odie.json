@@ -31,6 +31,7 @@
     "feed_times": ["07:00", "18:00"],
     "feeding_instructions": null,
     "archived_at": null,
+    "hidden_at": null,
     "feeding_plans": [
       {
         "id": 1,

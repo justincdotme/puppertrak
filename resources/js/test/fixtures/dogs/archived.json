@@ -31,7 +31,8 @@
       "notes": "Visited for two weeks last spring.",
       "feed_times": ["07:00", "17:00"],
       "feeding_instructions": null,
-      "archived_at": "2026-06-01T12:00:00-07:00"
+      "archived_at": "2026-06-01T12:00:00-07:00",
+      "hidden_at": null
     }
   ]
 }

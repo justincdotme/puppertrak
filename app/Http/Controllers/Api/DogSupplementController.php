@@ -55,7 +55,21 @@ final class DogSupplementController extends Controller
      */
     public function update(UpdateDogSupplementRequest $request, DogSupplement $dogSupplement): DogSupplementResource
     {
-        $dogSupplement->update($request->validated());
+        $data      = $request->validated();
+        $frequency = $data['frequency'] ?? null;
+
+        // Fields that no longer apply to the new frequency would otherwise
+        // survive from the stored row.
+        if ($frequency === 'as_needed') {
+            $data['times'] = null;
+        }
+
+        if ($frequency === 'as_needed' || $frequency === 'daily') {
+            $data['interval_days'] = null;
+            $data['start_date']    = null;
+        }
+
+        $dogSupplement->update($data);
 
         return new DogSupplementResource($dogSupplement->load('supplement'));
     }

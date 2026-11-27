@@ -27,7 +27,10 @@ final class FeedingLogController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = FeedingLog::query()->with('food')->orderByDesc('fed_at');
+        $query = FeedingLog::query()
+            ->whereHas('dog', fn (Builder $dogs) => $dogs->visible())
+            ->with('food')
+            ->orderByDesc('fed_at');
 
         if ($request->filled('dog')) {
             $slug = $request->string('dog')->toString();

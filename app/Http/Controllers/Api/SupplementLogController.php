@@ -28,6 +28,7 @@ final class SupplementLogController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $logs = SupplementLog::query()
+            ->whereHas('dog', fn (Builder $dogQuery) => $dogQuery->visible())
             ->when($request->filled('dog'), fn (Builder $query) => $query->whereHas(
                 'dog',
                 fn (Builder $dogQuery) => $dogQuery->where('slug', $request->query('dog')),

@@ -8,6 +8,9 @@ export interface DogSupplementPayload {
   supplement_id: number
   dose: number
   unit: string
+  frequency?: 'as_needed' | 'daily' | 'interval'
+  interval_days?: number | null
+  start_date?: string | null
   times?: string[] | null
   notes?: string | null
 }

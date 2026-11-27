@@ -30,6 +30,7 @@
     "notes": "Vet recheck scheduled for next month.",
     "feed_times": ["07:00", "18:00"],
     "feeding_instructions": null,
-    "archived_at": null
+    "archived_at": null,
+    "hidden_at": null
   }
 }

@@ -7,6 +7,7 @@ import { DogFormPage } from '@/pages/dog-form'
 import { DogHistoryPage } from '@/pages/dog-history'
 import { HistoryPage } from '@/pages/history'
 import { PantryPage } from '@/pages/pantry'
+import { SettingsPage } from '@/pages/settings'
 
 /**
  * One responsive shell: side nav from md up, bottom tabs below it. Screens
@@ -25,6 +26,7 @@ export function Shell() {
           <Route path="/dogs/:slug/history" element={<DogHistoryPage />} />
           <Route path="/pantry" element={<PantryPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -11,7 +11,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { server } from '@/test/server'
 import dashboardFixture from '@/test/fixtures/dashboard/today.json'
 import updatedFeedingLog from '@/test/fixtures/feeding-logs/updated.json'
-import type { DogToday, FeedingScheduleEntry } from '@/api/types'
+import type { DogToday, FeedingScheduleEntry, SupplementScheduleEntry } from '@/api/types'
 
 const mapleToday = dashboardFixture.data[0] as DogToday
 
@@ -19,6 +19,21 @@ const mapleToday = dashboardFixture.data[0] as DogToday
 const MORNING_PORTION = '1.00 cup Purina Pro Plan Sensitive Skin'
 // The evening slot has no logs, so the label falls back to the feeding plan.
 const EVENING_ROW = '18:00 — 1.00 cup Purina Pro Plan Sensitive Skin'
+
+const SYNOVI_EVERY_OTHER_DAY = {
+  id: 3,
+  dog_id: 1,
+  supplement_id: 4,
+  supplement_name: 'Synovi G4',
+  default_unit: 'chew',
+  dose: '1.00',
+  unit: 'chew',
+  frequency: 'interval',
+  interval_days: 2,
+  start_date: '2026-11-27',
+  times: ['06:00'],
+  notes: null,
+}
 
 function capturePatches(): { id: string; body: Record<string, unknown> }[] {
   const patches: { id: string; body: Record<string, unknown> }[] = []
@@ -65,6 +80,26 @@ function serveMapleSchedule(schedule: FeedingScheduleEntry[]) {
   )
 }
 
+function serveMapleSupplementSchedule(schedule: SupplementScheduleEntry[]) {
+  server.use(
+    http.get('/api/dogs/maple/today', () =>
+      HttpResponse.json({
+        data: {
+          ...mapleToday,
+          supplements: {
+            ...mapleToday.supplements,
+            expected: schedule.length,
+            handled: 0,
+            overdue: 0,
+            schedule,
+            as_needed: [],
+          },
+        },
+      })
+    )
+  )
+}
+
 function renderPage(slug = 'maple') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -91,6 +126,44 @@ function renderPage(slug = 'maple') {
           )
         )
       )
+    )
+  )
+}
+
+function serveMapleDetailWithAssignments(dogSupplements: unknown[]) {
+  server.use(
+    http.get('/api/dogs/maple', () =>
+      HttpResponse.json({
+        data: {
+          ...dashboardFixture.data[0]?.dog,
+          date_of_birth: '2020-04-12',
+          age_years: null,
+          age: 6,
+          sex: 'female',
+          is_neutered_or_spayed: true,
+          color_markings: null,
+          microchip_number: null,
+          rabies_vaccine_date: '2026-02-01',
+          da2pp_vaccine_date: '2026-02-01',
+          other_vaccines: null,
+          allergies: null,
+          medical_conditions: null,
+          current_medications: null,
+          primary_vet_name: null,
+          primary_vet_phone: null,
+          primary_vet_address: null,
+          emergency_vet_name: null,
+          emergency_vet_phone: null,
+          emergency_vet_address: null,
+          owner_name: null,
+          owner_phone: null,
+          notes: null,
+          feed_times: ['07:00', '18:00'],
+          feeding_instructions: null,
+          feeding_plans: [],
+          dog_supplements: dogSupplements,
+        },
+      })
     )
   )
 }
@@ -329,5 +402,232 @@ describe('DogPage', () => {
     expect(screen.getByTestId('portion-11')).toBeInTheDocument()
     expect(screen.getByTestId('portion-12')).toBeInTheDocument()
     expect(screen.getByText('0.25 cup Chicken broth')).toBeInTheDocument()
+  })
+
+  it('renders an untimed due supplement dose without a time slot', async () => {
+    server.use(
+      http.get('/api/dogs/maple', () =>
+        HttpResponse.json({
+          data: {
+            ...dashboardFixture.data[0]?.dog,
+            date_of_birth: '2020-04-12',
+            age_years: null,
+            age: 6,
+            sex: 'female',
+            is_neutered_or_spayed: true,
+            color_markings: null,
+            microchip_number: null,
+            rabies_vaccine_date: '2026-02-01',
+            da2pp_vaccine_date: '2026-02-01',
+            other_vaccines: null,
+            allergies: null,
+            medical_conditions: null,
+            current_medications: null,
+            primary_vet_name: null,
+            primary_vet_phone: null,
+            primary_vet_address: null,
+            emergency_vet_name: null,
+            emergency_vet_phone: null,
+            emergency_vet_address: null,
+            owner_name: null,
+            owner_phone: null,
+            notes: null,
+            feed_times: ['07:00', '18:00'],
+            feeding_instructions: null,
+            feeding_plans: [],
+            dog_supplements: [
+              {
+                id: 2,
+                dog_id: 1,
+                supplement_id: 2,
+                supplement_name: 'Cosequin',
+                default_unit: 'chew',
+                dose: '1.00',
+                unit: 'chew',
+                frequency: 'daily',
+                interval_days: null,
+                start_date: null,
+                times: null,
+                notes: null,
+              },
+            ],
+          },
+        })
+      )
+    )
+    serveMapleSupplementSchedule([
+      {
+        dog_supplement_id: 2,
+        supplement_name: 'Cosequin',
+        dose: '1.00',
+        unit: 'chew',
+        time: null,
+        status: 'due',
+        log_id: null,
+        logged_at: null,
+        skip_reason: null,
+      },
+    ])
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('1.00 chew Cosequin')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Every day')).toBeInTheDocument()
+  })
+
+  it('lists an assignment with nothing due today so it does not vanish after saving', async () => {
+    serveMapleDetailWithAssignments([
+      {
+        id: 3,
+        dog_id: 1,
+        supplement_id: 4,
+        supplement_name: 'Synovi G4',
+        default_unit: 'chew',
+        dose: '1.00',
+        unit: 'chew',
+        frequency: 'interval',
+        interval_days: 2,
+        start_date: '2026-11-27',
+        times: ['06:00'],
+        notes: null,
+      },
+    ])
+    serveMapleSupplementSchedule([])
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Synovi G4')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Every 2 days at 6:00 AM · Not due today')).toBeInTheDocument()
+    expect(screen.queryByText('Nothing assigned.')).not.toBeInTheDocument()
+  })
+
+  it('shows a dose given on an off day as given instead of not due', async () => {
+    serveMapleDetailWithAssignments([
+      {
+        id: 3,
+        dog_id: 1,
+        supplement_id: 4,
+        supplement_name: 'Synovi G4',
+        default_unit: 'chew',
+        dose: '1.00',
+        unit: 'chew',
+        frequency: 'interval',
+        interval_days: 2,
+        start_date: '2026-11-27',
+        times: ['06:00'],
+        notes: null,
+      },
+    ])
+    serveMapleSupplementSchedule([
+      {
+        dog_supplement_id: 3,
+        supplement_name: 'Synovi G4',
+        dose: '1.00',
+        unit: 'chew',
+        time: null,
+        status: 'fed',
+        log_id: 40,
+        logged_at: '2026-11-26T10:00:00-08:00',
+        skip_reason: null,
+      },
+    ])
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('1.00 chew Synovi G4')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Given')).toBeInTheDocument()
+    expect(screen.queryByText(/Not due today/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Due today')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      kind: 'a scheduled row',
+      name: 'Fish oil',
+      unit: 'pump',
+      schedule: 'Every day',
+      setup: () => {},
+    },
+    {
+      kind: 'an as-needed card',
+      name: 'Carprofen (Rimadyl) 75 mg',
+      unit: 'tablet',
+      schedule: 'As needed',
+      setup: () => {},
+    },
+    {
+      kind: 'a not due today card',
+      name: 'Synovi G4',
+      unit: 'chew',
+      schedule: 'Every N days',
+      setup: () => {
+        serveMapleDetailWithAssignments([SYNOVI_EVERY_OTHER_DAY])
+        serveMapleSupplementSchedule([])
+      },
+    },
+  ])(
+    'opens the edit sheet with the assignment loaded from $kind',
+    async ({ name, unit, schedule, setup }) => {
+      const user = userEvent.setup()
+      setup()
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: `Edit ${name}` }))
+
+      const sheet = await screen.findByRole('dialog', { name: 'Edit assignment' })
+      expect(within(sheet).getByLabelText('Unit')).toHaveValue(unit)
+      expect(within(sheet).getByRole('combobox', { name: 'Schedule' })).toHaveTextContent(schedule)
+      expect(within(sheet).getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+      expect(screen.queryByText(`Give ${name}`)).not.toBeInTheDocument()
+    }
+  )
+
+  it('still opens the give sheet when tapping a scheduled supplement row', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByText(/^07:00 .+ 1\.00 pump Fish oil$/))
+
+    await screen.findByRole('dialog', { name: 'Give Fish oil' })
+    expect(screen.queryByText('Edit assignment')).not.toBeInTheDocument()
+  })
+
+  it('lists every dose beyond the scheduled slots as its own given or skipped row', async () => {
+    const consoleError = vi.spyOn(console, 'error')
+    serveMapleDetailWithAssignments([SYNOVI_EVERY_OTHER_DAY])
+    const dose = {
+      dog_supplement_id: 3,
+      supplement_name: 'Synovi G4',
+      dose: '1.00',
+      unit: 'chew',
+      skip_reason: null,
+    }
+    serveMapleSupplementSchedule([
+      { ...dose, time: '06:00', status: 'fed', log_id: 7, logged_at: '2026-11-26T14:53:00-08:00' },
+      { ...dose, time: null, status: 'fed', log_id: 8, logged_at: '2026-11-26T15:10:00-08:00' },
+      {
+        ...dose,
+        time: null,
+        status: 'skipped',
+        log_id: 9,
+        logged_at: '2026-11-26T16:00:00-08:00',
+        skip_reason: 'refused',
+      },
+    ])
+
+    renderPage()
+
+    await screen.findByText(/^06:00 .+ 1\.00 chew Synovi G4$/)
+    expect(screen.getAllByText('1.00 chew Synovi G4')).toHaveLength(2)
+    expect(screen.getAllByText('Given')).toHaveLength(2)
+    expect(screen.getByText('refused')).toBeInTheDocument()
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 })

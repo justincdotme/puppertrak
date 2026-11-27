@@ -49,6 +49,9 @@ class DogFactory extends Factory
             'feed_times'            => ['07:00', '18:00'],
             'feeding_instructions'  => null,
             'archived_at'           => null,
+            'hidden_at'             => null,
+            'tracking_paused_at'    => null,
+            'tracking_resumed_at'   => null,
         ];
     }
 
@@ -58,5 +61,13 @@ class DogFactory extends Factory
     public function archived(): static
     {
         return $this->state(fn (): array => ['archived_at' => now()]);
+    }
+
+    /**
+     * @return static
+     */
+    public function hidden(): static
+    {
+        return $this->state(fn (): array => ['hidden_at' => now()]);
     }
 }

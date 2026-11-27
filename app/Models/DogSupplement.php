@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['dog_id', 'supplement_id', 'dose', 'unit', 'times', 'notes'])]
+#[Fillable(['dog_id', 'supplement_id', 'dose', 'unit', 'times', 'frequency', 'interval_days', 'start_date', 'notes'])]
 class DogSupplement extends Model
 {
     /** @use HasFactory<DogSupplementFactory> */
@@ -41,8 +41,10 @@ class DogSupplement extends Model
     protected function casts(): array
     {
         return [
-            'dose'  => 'decimal:2',
-            'times' => 'array',
+            'dose'          => 'decimal:2',
+            'times'         => 'array',
+            'interval_days' => 'integer',
+            'start_date'    => 'date:Y-m-d',
         ];
     }
 }

@@ -25,6 +25,12 @@ function makeWrapper() {
 }
 
 describe('PantryPage', () => {
+  it('counts hidden dogs in the "used by" label', async () => {
+    render(<PantryPage />, { wrapper: makeWrapper() })
+
+    expect(await screen.findByText('Maple, Odie', {}, { timeout: 3000 })).toBeInTheDocument()
+  })
+
   it('renders food cards from the fixture', async () => {
     render(<PantryPage />, { wrapper: makeWrapper() })
 

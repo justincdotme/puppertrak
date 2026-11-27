@@ -22,10 +22,10 @@ function renderShell() {
 }
 
 describe('Shell', () => {
-  it('renders all three nav items in both the side nav and the bottom tabs', () => {
+  it('renders all four nav items in both the side nav and the bottom tabs', () => {
     renderShell()
 
-    for (const label of ['Dogs', 'Pantry', 'History']) {
+    for (const label of ['Dogs', 'Pantry', 'History', 'Settings']) {
       expect(screen.getAllByRole('link', { name: label })).toHaveLength(2)
     }
   })

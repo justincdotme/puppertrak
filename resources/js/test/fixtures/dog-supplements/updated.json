@@ -7,6 +7,9 @@
     "default_unit": "pump",
     "dose": "2.00",
     "unit": "pump",
+    "frequency": "daily",
+    "interval_days": null,
+    "start_date": null,
     "times": ["07:00", "18:00"],
     "notes": "Dose increased per vet."
   }

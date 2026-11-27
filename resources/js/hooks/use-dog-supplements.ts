@@ -15,22 +15,26 @@ export function useDogSupplements(dogSlug: string) {
   })
 }
 
-export function useCreateDogSupplement(dogSlug: string) {
+export function useCreateDogSupplement() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: DogSupplementPayload) => createDogSupplement(dogSlug, payload),
-    onSuccess: () => {
+    mutationFn: ({ dogSlug, ...payload }: DogSupplementPayload & { dogSlug: string }) =>
+      createDogSupplement(dogSlug, payload),
+    onSuccess: (_data, { dogSlug }) => {
       queryClient.invalidateQueries({ queryKey: ['dogs', dogSlug] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
 
-export function useUpdateDogSupplement(dogSlug: string, id: number) {
+export function useUpdateDogSupplement(id: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Partial<DogSupplementPayload>) => updateDogSupplement(id, payload),
-    onSuccess: () => {
+    mutationFn: ({
+      dogSlug: _slug,
+      ...payload
+    }: Partial<DogSupplementPayload> & { dogSlug: string }) => updateDogSupplement(id, payload),
+    onSuccess: (_data, { dogSlug }) => {
       queryClient.invalidateQueries({ queryKey: ['dogs', dogSlug] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },

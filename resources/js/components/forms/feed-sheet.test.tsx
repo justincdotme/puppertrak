@@ -58,6 +58,7 @@ function makeDogToday(schedule: FeedingScheduleEntry[]): DogToday {
       weight_unit: 'lb',
       feeding_instructions: null,
       archived_at: null,
+      hidden_at: null,
     },
     feedings: { schedule, extras: [] },
     supplements: { expected: 0, handled: 0, overdue: 0, schedule: [], as_needed: [] },

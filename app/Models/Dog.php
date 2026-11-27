@@ -42,6 +42,9 @@ use Illuminate\Support\Str;
     'feed_times',
     'feeding_instructions',
     'archived_at',
+    'hidden_at',
+    'tracking_paused_at',
+    'tracking_resumed_at',
 ])]
 class Dog extends Model
 {
@@ -144,6 +147,16 @@ class Dog extends Model
     }
 
     /**
+     * @param Builder<Dog> $query
+     *
+     * @return Builder<Dog>
+     */
+    public function scopeVisible(Builder $query): Builder
+    {
+        return $query->whereNull('hidden_at');
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -158,6 +171,9 @@ class Dog extends Model
             'feed_times'            => 'array',
             'feed_times_set_at'     => 'datetime',
             'archived_at'           => 'datetime',
+            'hidden_at'             => 'datetime',
+            'tracking_paused_at'    => 'datetime',
+            'tracking_resumed_at'   => 'datetime',
         ];
     }
 }

@@ -20,6 +20,8 @@ Route::get('dogs/{dog:slug}/today', [DashboardController::class, 'today']);
 Route::apiResource('dogs', DogController::class)->except(['destroy']);
 Route::post('dogs/{dog:slug}/archive', [DogController::class, 'archive']);
 Route::post('dogs/{dog:slug}/unarchive', [DogController::class, 'unarchive']);
+Route::post('dogs/{dog:slug}/hide', [DogController::class, 'hide']);
+Route::post('dogs/{dog:slug}/unhide', [DogController::class, 'unhide']);
 
 Route::apiResource('foods', FoodController::class);
 

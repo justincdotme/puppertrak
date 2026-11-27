@@ -28,7 +28,8 @@ class TodayService
         $feedTimes = $dog->feed_times ?? [];
 
         /** @var Carbon|null $anchor */
-        $anchor = $dog->feed_times_set_at ?? $dog->created_at;
+        $anchor       = $dog->feed_times_set_at ?? $dog->created_at;
+        $hiddenWindow = $this->resolveHiddenWindow($dog);
 
         /** @var Collection<int, FeedingLog> $feedingLogs */
         $feedingLogs = $dog->feedingLogs()
@@ -37,12 +38,12 @@ class TodayService
             ->orderBy('fed_at')
             ->get();
 
-        $feedScheduleEntries = $this->buildFeedingScheduleFromLogs($feedTimes, $feedingLogs, $variance, $anchor);
+        $feedScheduleEntries = $this->buildFeedingScheduleFromLogs($feedTimes, $feedingLogs, $variance, $anchor, $hiddenWindow);
         $feedExtraEntries    = $this->buildFeedingExtrasFromLogs($feedTimes, $feedingLogs);
 
         $feedingMissed = collect($feedScheduleEntries)->contains('status', 'overdue');
 
-        $supplementResult = $this->buildSupplementData($dog, $variance);
+        $supplementResult = $this->buildSupplementData($dog, $variance, $hiddenWindow);
 
         $recentHours     = (int) config('puppertrak.health_note_recent_hours');
         $healthNoteCount = $dog->healthNotes()
@@ -51,6 +52,9 @@ class TodayService
 
         /** @var Carbon|null $archivedAt */
         $archivedAt = $dog->archived_at;
+
+        /** @var Carbon|null $hiddenAt */
+        $hiddenAt = $dog->hidden_at;
 
         return [
             'dog' => [
@@ -62,6 +66,7 @@ class TodayService
                 'weight_unit'          => $dog->weight_unit,
                 'feeding_instructions' => $dog->feeding_instructions,
                 'archived_at'          => $archivedAt?->toIso8601String(),
+                'hidden_at'            => $hiddenAt?->toIso8601String(),
             ],
             'feedings' => [
                 'schedule' => $feedScheduleEntries,
@@ -77,13 +82,13 @@ class TodayService
     }
 
     /**
-     * Builds the dashboard payload for all active dogs.
+     * Builds the dashboard payload for all active, visible dogs.
      *
      * @return array<int, array<string, mixed>>
      */
     public function forAllDogs(): array
     {
-        $dogs = Dog::active()
+        $dogs = Dog::active()->visible()
             ->with(['feedingPlans.food', 'dogSupplements.supplement'])
             ->get();
 
@@ -143,17 +148,55 @@ class TodayService
     }
 
     /**
+     * Today's stretch during which the dog was hidden, so slots inside it are
+     * not flagged while slots missed before hiding keep their alerts. A pause
+     * that began before today counts from midnight.
+     *
+     * @param Dog $dog
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function resolveHiddenWindow(Dog $dog): ?array
+    {
+        /** @var Carbon|null $resumedAt */
+        $resumedAt = $dog->tracking_resumed_at;
+
+        if ($resumedAt === null || ! $resumedAt->isToday()) {
+            return null;
+        }
+
+        /** @var Carbon|null $pausedAt */
+        $pausedAt = $dog->tracking_paused_at;
+
+        $start = $pausedAt !== null && $pausedAt->isToday() ? $pausedAt : now()->startOfDay();
+
+        return [$start, $resumedAt];
+    }
+
+    /**
+     * @param Carbon                           $at           Scheduled time today.
+     * @param array{0: Carbon, 1: Carbon}|null $hiddenWindow Today's hidden stretch, if any.
+     *
+     * @return boolean
+     */
+    private function isInHiddenWindow(Carbon $at, ?array $hiddenWindow): bool
+    {
+        return $hiddenWindow !== null && $at->between($hiddenWindow[0], $hiddenWindow[1]);
+    }
+
+    /**
      * Builds schedule entries by grouping today's logs on their stored
      * feed_time rather than inferring slot ownership from a variance window.
      *
-     * @param array<int, string>          $feedTimes Scheduled HH:MM strings from the dog.
-     * @param Collection<int, FeedingLog> $logs      Today's feeding logs, ordered by fed_at.
-     * @param CarbonInterval              $variance  Window half-width for overdue threshold.
-     * @param Carbon|null                 $anchor    Feed-time anchor; pre-anchor same-day slots are untracked.
+     * @param array<int, string>               $feedTimes    Scheduled HH:MM strings from the dog.
+     * @param Collection<int, FeedingLog>      $logs         Today's feeding logs, ordered by fed_at.
+     * @param CarbonInterval                   $variance     Window half-width for overdue threshold.
+     * @param Carbon|null                      $anchor       Feed-time anchor; pre-anchor same-day slots are untracked.
+     * @param array{0: Carbon, 1: Carbon}|null $hiddenWindow Today's hidden stretch; slots inside it are untracked.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildFeedingScheduleFromLogs(array $feedTimes, Collection $logs, CarbonInterval $variance, ?Carbon $anchor): array
+    private function buildFeedingScheduleFromLogs(array $feedTimes, Collection $logs, CarbonInterval $variance, ?Carbon $anchor, ?array $hiddenWindow): array
     {
         $sorted     = collect($feedTimes)->sort()->values();
         $logsByTime = $logs->whereIn('feed_time', $sorted->all())->groupBy('feed_time');
@@ -165,13 +208,12 @@ class TodayService
             $slotLogs = $logsByTime->get($time, new Collection);
             $at       = Carbon::parse('today ' . $time);
 
-            $preAnchorSameDay = $anchor !== null
-                && $at->lt($anchor)
-                && $at->isSameDay($anchor);
+            $untracked = ($anchor !== null && $at->lt($anchor) && $at->isSameDay($anchor))
+                || $this->isInHiddenWindow($at, $hiddenWindow);
 
             $entries[] = [
                 'time'   => $time,
-                'status' => $this->deriveFeedingStatusFromLogs($slotLogs, $at, $variance, $preAnchorSameDay),
+                'status' => $this->deriveFeedingStatusFromLogs($slotLogs, $at, $variance, $untracked),
                 'logs'   => $slotLogs->values()->map(fn (FeedingLog $log): array => [
                     'log_id'      => $log->id,
                     'logged_at'   => $this->formatTimestamp($log->fed_at),
@@ -219,14 +261,14 @@ class TodayService
     }
 
     /**
-     * @param Collection<int, FeedingLog> $logs             Logs assigned to this slot.
-     * @param Carbon                      $at               Scheduled time.
-     * @param CarbonInterval              $variance         Window half-width for overdue threshold.
-     * @param boolean                     $preAnchorSameDay Whether this slot precedes the anchor on the same calendar day.
+     * @param Collection<int, FeedingLog> $logs      Logs assigned to this slot.
+     * @param Carbon                      $at        Scheduled time.
+     * @param CarbonInterval              $variance  Window half-width for overdue threshold.
+     * @param boolean                     $untracked Whether this slot fell outside tracked time today.
      *
      * @return string
      */
-    private function deriveFeedingStatusFromLogs(Collection $logs, Carbon $at, CarbonInterval $variance, bool $preAnchorSameDay = false): string
+    private function deriveFeedingStatusFromLogs(Collection $logs, Carbon $at, CarbonInterval $variance, bool $untracked = false): string
     {
         if ($logs->isNotEmpty()) {
             $hasFed = $logs->contains(fn (FeedingLog $log): bool => ! $log->was_skipped && (float) $log->amount !== 0.0);
@@ -234,7 +276,7 @@ class TodayService
             return $hasFed ? 'fed' : 'skipped';
         }
 
-        if ($preAnchorSameDay) {
+        if ($untracked) {
             return 'untracked';
         }
 
@@ -242,35 +284,38 @@ class TodayService
     }
 
     /**
-     * Filters times to those at-or-after a threshold datetime, so a supplement
-     * assignment is never judged against times that closed before it existed.
+     * Filters times to those a supplement assignment can be judged against, so
+     * it is never flagged for times that closed before it existed or while the
+     * dog was hidden.
      *
-     * @param array<int, string> $times Scheduled HH:MM strings.
-     * @param Carbon|null        $after Threshold datetime; times before it are excluded.
+     * @param array<int, string>               $times        Scheduled HH:MM strings.
+     * @param Carbon|null                      $after        Threshold datetime; times before it are excluded.
+     * @param array{0: Carbon, 1: Carbon}|null $hiddenWindow Today's hidden stretch; times inside it are excluded.
      *
      * @return array<int, string>
      */
-    private function eligibleTimes(array $times, ?Carbon $after): array
+    private function eligibleTimes(array $times, ?Carbon $after, ?array $hiddenWindow): array
     {
-        if ($after === null) {
-            return $times;
-        }
-
         return array_values(array_filter(
             $times,
-            fn (string $time): bool => Carbon::parse('today ' . $time)->gte($after),
+            function (string $time) use ($after, $hiddenWindow): bool {
+                $at = Carbon::parse('today ' . $time);
+
+                return ($after === null || $at->gte($after)) && ! $this->isInHiddenWindow($at, $hiddenWindow);
+            },
         ));
     }
 
     /**
      * Builds scheduled and as-needed supplement entries with aggregate counts.
      *
-     * @param Dog            $dog      Dog with dogSupplements.supplement loaded.
-     * @param CarbonInterval $variance Window half-width.
+     * @param Dog                              $dog          Dog with dogSupplements.supplement loaded.
+     * @param CarbonInterval                   $variance     Window half-width.
+     * @param array{0: Carbon, 1: Carbon}|null $hiddenWindow Today's hidden stretch, if any.
      *
      * @return array<string, mixed>
      */
-    private function buildSupplementData(Dog $dog, CarbonInterval $variance): array
+    private function buildSupplementData(Dog $dog, CarbonInterval $variance, ?array $hiddenWindow): array
     {
         $allSupplementLogs = $dog->supplementLogs()
             ->whereBetween('given_at', [now()->startOfDay(), now()->endOfDay()])
@@ -287,27 +332,71 @@ class TodayService
             /** @var Collection<int, SupplementLog> $assignmentLogs */
             $assignmentLogs = $allSupplementLogs->where('dog_supplement_id', $assignment->id)->values();
 
+            $frequency = $assignment->frequency ?? 'as_needed';
+
+            if ($frequency === 'as_needed') {
+                $asNeededEntries[] = $this->buildAsNeededEntry($assignment, $assignmentLogs);
+                continue;
+            }
+
+            if (! $this->isDueDay($assignment)) {
+                // A dose given on an off day still shows, but the day expects nothing.
+                if ($assignmentLogs->isNotEmpty()) {
+                    $scheduledEntries[] = $this->buildUntimedScheduleEntry($assignment, $assignmentLogs);
+                }
+
+                continue;
+            }
+
             /** @var array<int, string> $times */
             $times = $assignment->times ?? [];
 
             if (count($times) === 0) {
-                $asNeededEntries[] = $this->buildAsNeededEntry($assignment, $assignmentLogs);
+                $totalExpected++;
+                $untimedResult      = $this->buildUntimedScheduleEntry($assignment, $assignmentLogs);
+                $scheduledEntries[] = $untimedResult;
+
+                if ($untimedResult['status'] === 'fed' || $untimedResult['status'] === 'skipped') {
+                    $totalHandled++;
+                }
+
                 continue;
             }
 
             /** @var Carbon|null $assignmentCreatedAt */
             $assignmentCreatedAt = $assignment->created_at;
-            $eligibleTimes       = $this->eligibleTimes($times, $assignmentCreatedAt);
+
+            $eligibleTimes = $this->eligibleTimes($times, $assignmentCreatedAt, $hiddenWindow);
 
             $totalExpected += count($eligibleTimes);
 
-            [$timeSchedule] = $this->matchToWindows($eligibleTimes, $assignmentLogs, 'given_at', $variance);
+            // Ineligible slots stay out of matching so they cannot claim a dose
+            // that belongs to a later eligible slot.
+            [$timeSchedule, $leftoverLogs] = $this->matchToWindows($eligibleTimes, $assignmentLogs, 'given_at', $variance);
+
+            foreach (array_diff($times, $eligibleTimes) as $time) {
+                $timeSchedule[] = ['at' => Carbon::parse('today ' . $time), 'log' => null];
+            }
+
+            usort($timeSchedule, fn (array $a, array $b): int => $a['at'] <=> $b['at']);
+
+            [$timeSchedule, $unplacedLogs] = $this->claimOpenSlots($timeSchedule, $leftoverLogs);
 
             foreach ($timeSchedule as $entry) {
                 /** @var SupplementLog|null $log */
-                $log    = $entry['log'];
-                $at     = $entry['at'];
-                $status = $this->deriveSupplementStatus($log, $at, $variance);
+                $log      = $entry['log'];
+                $at       = $entry['at'];
+                $eligible = in_array($at->format('H:i'), $eligibleTimes, true);
+
+                // A dose given against an untracked slot makes that slot count,
+                // so handled never exceeds expected.
+                if (! $eligible && $log !== null) {
+                    $totalExpected++;
+                }
+
+                $status = $eligible || $log !== null
+                    ? $this->deriveSupplementStatus($log, $at, $variance)
+                    : 'untracked';
 
                 if ($status === 'fed' || $status === 'skipped') {
                     $totalHandled++;
@@ -329,6 +418,10 @@ class TodayService
                     'skip_reason'       => $log?->skip_reason,
                 ];
             }
+
+            foreach ($unplacedLogs as $log) {
+                $scheduledEntries[] = $this->buildUntimedScheduleEntry($assignment, new Collection([$log]));
+            }
         }
 
         return [
@@ -337,6 +430,114 @@ class TodayService
             'overdue'   => $totalOverdue,
             'schedule'  => $scheduledEntries,
             'as_needed' => $asNeededEntries,
+        ];
+    }
+
+    /**
+     * Places doses that missed every reminder window on a slot still open, so
+     * no dose given today drops off the view. Each takes the latest open slot
+     * at or before it, otherwise the earliest open slot after it.
+     *
+     * @param array<int, array{at: Carbon, log: SupplementLog|null}> $schedule Slots sorted by time.
+     * @param list<SupplementLog>                                    $logs     Unmatched logs, ordered by given_at.
+     *
+     * @return array{0: array<int, array{at: Carbon, log: SupplementLog|null}>, 1: list<SupplementLog>}
+     */
+    private function claimOpenSlots(array $schedule, array $logs): array
+    {
+        $unplaced = [];
+
+        foreach ($logs as $log) {
+            /** @var Carbon $givenAt */
+            $givenAt = $log->given_at;
+
+            $open    = array_filter($schedule, fn (array $entry): bool => $entry['log'] === null);
+            $earlier = array_filter($open, fn (array $entry): bool => $entry['at']->lte($givenAt));
+            $key     = $earlier !== [] ? array_key_last($earlier) : array_key_first($open);
+
+            if ($key === null) {
+                $unplaced[] = $log;
+            } else {
+                $schedule[$key]['log'] = $log;
+            }
+        }
+
+        return [$schedule, $unplaced];
+    }
+
+    /**
+     * Whether today is a due day for a given assignment based on its frequency.
+     *
+     * @param DogSupplement $assignment
+     *
+     * @return boolean
+     */
+    private function isDueDay(DogSupplement $assignment): bool
+    {
+        $frequency = $assignment->frequency ?? 'as_needed';
+
+        if ($frequency === 'daily') {
+            return true;
+        }
+
+        if ($frequency !== 'interval') {
+            return false;
+        }
+
+        /** @var Carbon|null $startDate */
+        $startDate = $assignment->start_date;
+
+        if ($startDate === null) {
+            return false;
+        }
+
+        $intervalDays = $assignment->interval_days;
+
+        if ($intervalDays === null || $intervalDays < 1) {
+            return false;
+        }
+
+        $today    = now()->startOfDay();
+        $start    = $startDate->copy()->startOfDay();
+        $daysDiff = (int) $start->diffInDays($today, false);
+
+        if ($daysDiff < 0) {
+            return false;
+        }
+
+        return $daysDiff % $intervalDays === 0;
+    }
+
+    /**
+     * Builds a schedule entry for an assignment without specific times.
+     * These are due all day and never overdue.
+     *
+     * @param DogSupplement                  $assignment
+     * @param Collection<int, SupplementLog> $logs       Today's logs for this assignment.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildUntimedScheduleEntry(DogSupplement $assignment, Collection $logs): array
+    {
+        /** @var SupplementLog|null $log */
+        $log = $logs->first();
+
+        $status = 'due';
+
+        if ($log !== null) {
+            $status = ($log->was_skipped || (float) $log->amount_given === 0.0) ? 'skipped' : 'fed';
+        }
+
+        return [
+            'dog_supplement_id' => $assignment->id,
+            'supplement_name'   => $assignment->supplement?->name,
+            'dose'              => $assignment->dose,
+            'unit'              => $assignment->unit,
+            'time'              => null,
+            'status'            => $status,
+            'log_id'            => $log?->id,
+            'logged_at'         => $this->formatTimestamp($log?->given_at),
+            'skip_reason'       => $log?->skip_reason,
         ];
     }
 

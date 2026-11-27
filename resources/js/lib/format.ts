@@ -74,3 +74,26 @@ export function formatScheduledTime(time: string): string {
   const displayHours = hours % 12 || 12
   return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`
 }
+
+/**
+ * Human-readable schedule label for a supplement assignment.
+ * Examples: "As needed", "Every day at 7:00 AM", "Every 3 days",
+ * "Every 3 days at 7:00 AM, 6:00 PM".
+ */
+export function formatSupplementSchedule(
+  frequency: 'as_needed' | 'daily' | 'interval',
+  times: string[] | null,
+  intervalDays: number | null
+): string {
+  const timeParts =
+    times && times.length > 0 ? times.map(t => formatScheduledTime(t)).join(', ') : null
+
+  if (frequency === 'as_needed') return 'As needed'
+
+  if (frequency === 'interval') {
+    const base = `Every ${intervalDays ?? '?'} days`
+    return timeParts ? `${base} at ${timeParts}` : base
+  }
+
+  return timeParts ? `Every day at ${timeParts}` : 'Every day'
+}

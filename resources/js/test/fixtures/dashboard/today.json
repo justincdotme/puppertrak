@@ -9,7 +9,8 @@
         "weight": "62.00",
         "weight_unit": "lb",
         "feeding_instructions": null,
-        "archived_at": null
+        "archived_at": null,
+        "hidden_at": null
       },
       "feedings": {
         "schedule": [
@@ -105,7 +106,8 @@
         "weight": "24.00",
         "weight_unit": "lb",
         "feeding_instructions": null,
-        "archived_at": null
+        "archived_at": null,
+        "hidden_at": null
       },
       "feedings": {
         "schedule": [

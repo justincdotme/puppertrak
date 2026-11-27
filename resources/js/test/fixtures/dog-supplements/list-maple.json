@@ -8,6 +8,9 @@
       "default_unit": "pump",
       "dose": "1.00",
       "unit": "pump",
+      "frequency": "daily",
+      "interval_days": null,
+      "start_date": null,
       "times": ["07:00"],
       "notes": null
     },
@@ -19,6 +22,9 @@
       "default_unit": "chew",
       "dose": "1.00",
       "unit": "chew",
+      "frequency": "daily",
+      "interval_days": null,
+      "start_date": null,
       "times": ["18:00"],
       "notes": null
     },
@@ -30,6 +36,9 @@
       "default_unit": "sachet",
       "dose": "1.00",
       "unit": "sachet",
+      "frequency": "daily",
+      "interval_days": null,
+      "start_date": null,
       "times": ["07:30"],
       "notes": null
     },
@@ -41,6 +50,9 @@
       "default_unit": "tablet",
       "dose": "1.00",
       "unit": "tablet",
+      "frequency": "as_needed",
+      "interval_days": null,
+      "start_date": null,
       "times": null,
       "notes": null
     }

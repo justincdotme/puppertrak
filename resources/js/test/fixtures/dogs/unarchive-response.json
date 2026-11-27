@@ -30,6 +30,7 @@
     "notes": "Visited for two weeks last spring.",
     "feed_times": ["07:00", "17:00"],
     "feeding_instructions": null,
-    "archived_at": null
+    "archived_at": null,
+    "hidden_at": null
   }
 }
