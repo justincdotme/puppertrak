@@ -138,6 +138,26 @@ class FeedingLogApiTest extends TestCase
     /**
      * @return void
      */
+    public function test_index_excludes_logs_of_hidden_dogs(): void
+    {
+        $visible = Dog::factory()->create();
+        $hidden  = Dog::factory()->hidden()->create();
+        FeedingLog::factory()->for($visible)->create();
+        FeedingLog::factory()->for($hidden)->create();
+
+        $this->getJson('/api/feeding-logs')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.dog_id', $visible->id);
+
+        $this->getJson("/api/feeding-logs?dog={$hidden->slug}")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    /**
+     * @return void
+     */
     public function test_store_accepts_a_scheduled_feed_time(): void
     {
         $dog = Dog::factory()->create(['feed_times' => ['07:00', '18:00']]);

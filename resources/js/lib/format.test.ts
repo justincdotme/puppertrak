@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { formatDate, formatDayHeading, formatStamp, formatTime } from './format'
+import {
+  formatDate,
+  formatDayHeading,
+  formatStamp,
+  formatSupplementSchedule,
+  formatTime,
+} from './format'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -72,5 +78,68 @@ describe('formatStamp', () => {
   it('combines the day heading and the literal time', () => {
     vi.useFakeTimers({ now: new Date('2026-09-06T20:00:00Z') })
     expect(formatStamp('2026-09-06T07:05:00-07:00')).toBe('Today at 7:05 AM')
+  })
+})
+
+describe('formatSupplementSchedule', () => {
+  it.each([
+    {
+      name: 'as-needed with no times',
+      frequency: 'as_needed' as const,
+      times: null,
+      intervalDays: null,
+      expected: 'As needed',
+    },
+    {
+      name: 'daily with no times',
+      frequency: 'daily' as const,
+      times: null,
+      intervalDays: null,
+      expected: 'Every day',
+    },
+    {
+      name: 'daily with one time',
+      frequency: 'daily' as const,
+      times: ['08:00'],
+      intervalDays: null,
+      expected: 'Every day at 8:00 AM',
+    },
+    {
+      name: 'daily with two times',
+      frequency: 'daily' as const,
+      times: ['07:00', '18:00'],
+      intervalDays: null,
+      expected: 'Every day at 7:00 AM, 6:00 PM',
+    },
+    {
+      name: 'interval with no times',
+      frequency: 'interval' as const,
+      times: null,
+      intervalDays: 3,
+      expected: 'Every 3 days',
+    },
+    {
+      name: 'interval with one time',
+      frequency: 'interval' as const,
+      times: ['08:00'],
+      intervalDays: 3,
+      expected: 'Every 3 days at 8:00 AM',
+    },
+    {
+      name: 'interval with two times',
+      frequency: 'interval' as const,
+      times: ['07:00', '18:00'],
+      intervalDays: 2,
+      expected: 'Every 2 days at 7:00 AM, 6:00 PM',
+    },
+    {
+      name: 'daily with empty times array',
+      frequency: 'daily' as const,
+      times: [],
+      intervalDays: null,
+      expected: 'Every day',
+    },
+  ])('$name', ({ frequency, times, intervalDays, expected }) => {
+    expect(formatSupplementSchedule(frequency, times, intervalDays)).toBe(expected)
   })
 })

@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { Dog, History, Package } from 'lucide-react'
+import { Dog, History, Package, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from '@/lib/nav'
 
-const ICONS = { dogs: Dog, pantry: Package, history: History }
+const ICONS = { dogs: Dog, pantry: Package, history: History, settings: Settings }
 
 /** Phone navigation only. SideNav takes over from md up. */
 export function BottomTabs() {

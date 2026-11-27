@@ -30,6 +30,7 @@
     "notes": null,
     "feed_times": ["07:00", "18:00"],
     "feeding_instructions": null,
-    "archived_at": "2026-09-07T11:00:00-07:00"
+    "archived_at": "2026-09-07T11:00:00-07:00",
+    "hidden_at": null
   }
 }

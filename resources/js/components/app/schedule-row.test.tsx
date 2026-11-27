@@ -59,6 +59,22 @@ describe('ScheduleRow', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
+  it('omits the time slot when time is null', () => {
+    render(
+      <ScheduleRow
+        time={null}
+        status="due"
+        label="1.00 chew Cosequin"
+        sublabel="Every day"
+        loggedAt={null}
+      />
+    )
+
+    expect(screen.getByText('1.00 chew Cosequin')).toBeInTheDocument()
+    expect(screen.getByText('Every day')).toBeInTheDocument()
+    expect(screen.queryByText(/AM|PM/)).not.toBeInTheDocument()
+  })
+
   it('renders multiple portions and fires the correct callback when one is tapped', async () => {
     const user = userEvent.setup()
     const onPortionClick = vi.fn()

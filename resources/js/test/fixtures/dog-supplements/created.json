@@ -7,6 +7,9 @@
     "default_unit": "chew",
     "dose": "1.00",
     "unit": "chew",
+    "frequency": "daily",
+    "interval_days": null,
+    "start_date": null,
     "times": ["18:30"],
     "notes": null
   }

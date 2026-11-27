@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { History, Plus, Stethoscope } from 'lucide-react'
+import { History, Pencil, Plus, Stethoscope } from 'lucide-react'
 import { AppHeader, Screen } from '@/components/app/app-header'
 import { ScheduleRow } from '@/components/app/schedule-row'
 import { VetContactCard } from '@/components/app/vet-contact-card'
@@ -15,7 +15,7 @@ import { useDog } from '@/hooks/use-dogs'
 import { useDogToday } from '@/hooks/use-dashboard'
 import { useHealthNotes, useDeleteHealthNote } from '@/hooks/use-health-notes'
 import { useNotification } from '@/components/app/use-notification'
-import { formatDate, formatStamp } from '@/lib/format'
+import { formatDate, formatStamp, formatSupplementSchedule } from '@/lib/format'
 import type {
   DogSupplement,
   FeedingLogEntry,
@@ -41,6 +41,30 @@ function SectionTitle({
   )
 }
 
+function EditAssignmentButton({
+  assignment,
+  onEdit,
+}: {
+  assignment: DogSupplement
+  onEdit: (assignment: DogSupplement) => void
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-8 flex-none"
+      aria-label={`Edit ${assignment.supplement_name ?? 'supplement'}`}
+      onClick={e => {
+        // Scheduled rows open the give sheet on click; editing must not.
+        e.stopPropagation()
+        onEdit(assignment)
+      }}
+    >
+      <Pencil className="size-3.5" />
+    </Button>
+  )
+}
+
 export function DogPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
@@ -56,6 +80,7 @@ export function DogPage() {
   const [noteOpen, setNoteOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<HealthNote | undefined>(undefined)
   const [assignOpen, setAssignOpen] = useState(false)
+  const [editingAssignment, setEditingAssignment] = useState<DogSupplement | undefined>(undefined)
   const [suppOpen, setSuppOpen] = useState(false)
   const [suppAssignment, setSuppAssignment] = useState<DogSupplement | undefined>(undefined)
 
@@ -78,6 +103,11 @@ export function DogPage() {
     const assignment = dog.dog_supplements?.find(a => a.id === entry.dog_supplement_id)
     setSuppAssignment(assignment)
     setSuppOpen(true)
+  }
+
+  const openAssignmentEdit = (assignment: DogSupplement) => {
+    setEditingAssignment(assignment)
+    setAssignOpen(true)
   }
 
   const handleDeleteNote = (note: HealthNote) => {
@@ -218,6 +248,7 @@ export function DogPage() {
                   className="h-8 px-0 whitespace-nowrap"
                   onClick={() => {
                     setSuppAssignment(undefined)
+                    setEditingAssignment(undefined)
                     setAssignOpen(true)
                   }}
                 >
@@ -229,28 +260,46 @@ export function DogPage() {
               Supplements
             </SectionTitle>
 
-            {today.supplements.schedule.length === 0 &&
-              today.supplements.as_needed.length === 0 && (
-                <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Nothing assigned.
-                </p>
-              )}
+            {(dog.dog_supplements ?? []).length === 0 && (
+              <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                Nothing assigned.
+              </p>
+            )}
 
             {today.supplements.schedule.map(entry => {
+              const assignment = dog.dog_supplements?.find(a => a.id === entry.dog_supplement_id)
+
               let sublabel = 'Upcoming'
               if (entry.status === 'fed') sublabel = 'Given'
               else if (entry.status === 'skipped') sublabel = entry.skip_reason ?? 'Skipped'
               else if (entry.status === 'overdue') sublabel = 'Overdue'
+              else if (entry.status === 'due' || entry.status === 'untracked') {
+                sublabel = assignment
+                  ? formatSupplementSchedule(
+                      assignment.frequency,
+                      assignment.times,
+                      assignment.interval_days
+                    )
+                  : 'Due today'
+              }
+
+              const timePrefix = entry.time ? `${entry.time} — ` : ''
+              const doseLabel = `${entry.dose} ${entry.unit} ${entry.supplement_name ?? ''}`
 
               return (
                 <ScheduleRow
-                  key={`${entry.dog_supplement_id}-${entry.time}`}
+                  key={`${entry.dog_supplement_id}-${entry.time ?? entry.log_id ?? 'untimed'}`}
                   time={entry.time}
                   status={entry.status}
-                  label={`${entry.time} — ${entry.dose} ${entry.unit} ${entry.supplement_name ?? ''}`}
+                  label={`${timePrefix}${doseLabel}`}
                   sublabel={sublabel}
                   loggedAt={entry.logged_at}
                   onClick={() => openSuppForSchedule(entry)}
+                  action={
+                    assignment && (
+                      <EditAssignmentButton assignment={assignment} onEdit={openAssignmentEdit} />
+                    )
+                  }
                 />
               )
             })}
@@ -268,6 +317,9 @@ export function DogPage() {
                     </span>
                     <span className="block text-xs text-muted-foreground">As needed</span>
                   </span>
+                  {assignment && (
+                    <EditAssignmentButton assignment={assignment} onEdit={openAssignmentEdit} />
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -280,6 +332,43 @@ export function DogPage() {
                 </Card>
               )
             })}
+
+            {(dog.dog_supplements ?? [])
+              .filter(
+                a =>
+                  !today.supplements.schedule.some(e => e.dog_supplement_id === a.id) &&
+                  !today.supplements.as_needed.some(e => e.dog_supplement_id === a.id)
+              )
+              .map(assignment => (
+                <Card key={assignment.id} className="flex items-center gap-3 p-4">
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">
+                      {assignment.supplement_name ?? 'Supplement'}
+                    </span>
+                    <span className="block font-mono text-sm">
+                      {assignment.dose} {assignment.unit}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {formatSupplementSchedule(
+                        assignment.frequency,
+                        assignment.times,
+                        assignment.interval_days
+                      )}
+                      {' · Not due today'}
+                    </span>
+                  </span>
+                  <EditAssignmentButton assignment={assignment} onEdit={openAssignmentEdit} />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSuppAssignment(assignment)
+                      setSuppOpen(true)
+                    }}
+                  >
+                    Give
+                  </Button>
+                </Card>
+              ))}
           </section>
         )}
 
@@ -379,7 +468,12 @@ export function DogPage() {
         dogSlug={dog.slug}
         assignment={suppAssignment}
       />
-      <AssignmentSheet open={assignOpen} onOpenChange={setAssignOpen} dog={dog} />
+      <AssignmentSheet
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        dog={dog}
+        assignment={editingAssignment}
+      />
       <HealthNoteSheet
         open={noteOpen}
         onOpenChange={setNoteOpen}

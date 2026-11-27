@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Manages dog profiles, including archiving and unarchiving.
+ * Manages dog profiles, including archiving and hiding.
  */
 final class DogController extends Controller
 {
@@ -25,9 +25,15 @@ final class DogController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = $request->boolean('archived')
-            ? Dog::query()->whereNotNull('archived_at')
-            : Dog::active();
+        if ($request->boolean('archived')) {
+            $query = Dog::query()->whereNotNull('archived_at');
+        } else {
+            $query = Dog::active();
+
+            if (! $request->boolean('include_hidden')) {
+                $query->visible();
+            }
+        }
 
         return DogResource::collection(
             $query->with(['feedingPlans.food', 'dogSupplements.supplement'])->get(),
@@ -93,6 +99,40 @@ final class DogController extends Controller
     public function unarchive(Dog $dog): DogResource
     {
         $dog->update(['archived_at' => null]);
+
+        return new DogResource($dog);
+    }
+
+    /**
+     * @param Dog $dog
+     *
+     * @return DogResource
+     */
+    public function hide(Dog $dog): DogResource
+    {
+        if ($dog->hidden_at === null) {
+            $dog->update(['hidden_at' => now()]);
+        }
+
+        return new DogResource($dog);
+    }
+
+    /**
+     * @param Dog $dog
+     *
+     * @return DogResource
+     */
+    public function unhide(Dog $dog): DogResource
+    {
+        if ($dog->hidden_at === null) {
+            return new DogResource($dog);
+        }
+
+        $dog->update([
+            'hidden_at'           => null,
+            'tracking_paused_at'  => $dog->hidden_at,
+            'tracking_resumed_at' => now(),
+        ]);
 
         return new DogResource($dog);
     }

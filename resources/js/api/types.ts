@@ -33,6 +33,7 @@ export interface Dog {
   feed_times: string[] | null
   feeding_instructions: string | null
   archived_at: string | null
+  hidden_at: string | null
   // Present when the controller eager-loads the relations (index and show
   // endpoints both do); optional here for payloads that don't.
   feeding_plans?: FeedingPlan[]
@@ -77,6 +78,8 @@ export interface Supplement {
   notes: string | null
 }
 
+export type SupplementFrequency = 'as_needed' | 'daily' | 'interval'
+
 export interface DogSupplement {
   id: number
   dog_id: number
@@ -85,6 +88,9 @@ export interface DogSupplement {
   default_unit: string | null
   dose: string
   unit: string
+  frequency: SupplementFrequency
+  interval_days: number | null
+  start_date: string | null
   times: string[] | null
   notes: string | null
 }
@@ -127,9 +133,10 @@ export interface DogTodaySummary {
   weight_unit: WeightUnit
   feeding_instructions: string | null
   archived_at: string | null
+  hidden_at: string | null
 }
 
-export type FeedingScheduleStatus = 'fed' | 'skipped' | 'overdue' | 'upcoming' | 'untracked'
+export type FeedingScheduleStatus = 'fed' | 'skipped' | 'overdue' | 'upcoming' | 'untracked' | 'due'
 
 export interface FeedingLogEntry {
   log_id: number
@@ -161,7 +168,7 @@ export interface SupplementScheduleEntry {
   supplement_name: string | null
   dose: string
   unit: string
-  time: string
+  time: string | null
   status: FeedingScheduleStatus
   log_id: number | null
   logged_at: string | null

@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNotification } from '@/components/app/use-notification'
 import { useFoods, useDeleteFood } from '@/hooks/use-foods'
 import { useSupplements, useDeleteSupplement } from '@/hooks/use-supplements'
-import { useDogs } from '@/hooks/use-dogs'
+import { useDogsIncludingHidden } from '@/hooks/use-dogs'
 import { fetchDog } from '@/api/dogs'
 import type { Dog, Food, Supplement } from '@/api/types'
 import axios from 'axios'
@@ -23,7 +23,7 @@ type PantryTab = 'foods' | 'supplements'
 export function PantryPage() {
   const { data: foods } = useFoods()
   const { data: supplements } = useSupplements()
-  const { data: dogs } = useDogs()
+  const { data: dogs } = useDogsIncludingHidden()
   const deleteFood = useDeleteFood()
   const deleteSupplement = useDeleteSupplement()
   const { notify } = useNotification()

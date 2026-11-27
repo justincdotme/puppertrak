@@ -42,6 +42,10 @@ export async function fetchDogs(archived = false): Promise<Dog[]> {
   )
 }
 
+export async function fetchDogsIncludingHidden(): Promise<Dog[]> {
+  return unwrap(await api.get<{ data: Dog[] }>('/api/dogs', { params: { include_hidden: 1 } }))
+}
+
 export async function fetchDog(slug: string): Promise<Dog> {
   return unwrap(await api.get<{ data: Dog }>(`/api/dogs/${slug}`))
 }
@@ -60,4 +64,12 @@ export async function archiveDog(slug: string): Promise<Dog> {
 
 export async function unarchiveDog(slug: string): Promise<Dog> {
   return unwrap(await api.post<{ data: Dog }>(`/api/dogs/${slug}/unarchive`))
+}
+
+export async function hideDog(slug: string): Promise<Dog> {
+  return unwrap(await api.post<{ data: Dog }>(`/api/dogs/${slug}/hide`))
+}
+
+export async function unhideDog(slug: string): Promise<Dog> {
+  return unwrap(await api.post<{ data: Dog }>(`/api/dogs/${slug}/unhide`))
 }

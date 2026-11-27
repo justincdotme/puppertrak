@@ -26,6 +26,9 @@ class DogSupplementResource extends JsonResource
             'unit'            => $this->unit,
             'default_unit'    => $this->supplement?->default_unit,
             'times'           => $this->times,
+            'frequency'       => $this->frequency,
+            'interval_days'   => $this->interval_days,
+            'start_date'      => $this->start_date?->format('Y-m-d'),
             'notes'           => $this->notes,
         ];
     }

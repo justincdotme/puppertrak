@@ -28,6 +28,9 @@ class DogSupplementFactory extends Factory
             'dose'          => fake()->randomFloat(2, 0.5, 2),
             'unit'          => fake()->randomElement(['mg', 'mL', 'capsule', 'pump', 'tablet']),
             'times'         => ['07:00'],
+            'frequency'     => 'daily',
+            'interval_days' => null,
+            'start_date'    => null,
             'notes'         => null,
         ];
     }
@@ -37,6 +40,6 @@ class DogSupplementFactory extends Factory
      */
     public function asNeeded(): static
     {
-        return $this->state(fn (): array => ['times' => null]);
+        return $this->state(fn (): array => ['times' => null, 'frequency' => 'as_needed']);
     }
 }

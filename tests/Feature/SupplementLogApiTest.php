@@ -44,6 +44,26 @@ class SupplementLogApiTest extends TestCase
     /**
      * @return void
      */
+    public function test_index_excludes_logs_of_hidden_dogs(): void
+    {
+        $visible = Dog::factory()->create();
+        $hidden  = Dog::factory()->hidden()->create();
+        SupplementLog::factory()->for($visible)->create();
+        SupplementLog::factory()->for($hidden)->create();
+
+        $this->getJson('/api/supplement-logs')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.dog_id', $visible->id);
+
+        $this->getJson("/api/supplement-logs?dog={$hidden->slug}")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    /**
+     * @return void
+     */
     public function test_skip_reason_is_required_when_amount_given_is_zero(): void
     {
         $dog = Dog::factory()->create();

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Check } from 'lucide-react'
@@ -33,17 +33,43 @@ import { useNotification } from '@/components/app/use-notification'
 import { cn } from '@/lib/utils'
 import { useDogs } from '@/hooks/use-dogs'
 import { useSupplements } from '@/hooks/use-supplements'
-import { useCreateDogSupplement, useUpdateDogSupplement } from '@/hooks/use-dog-supplements'
-import type { Dog, DogSupplement, Supplement } from '@/api/types'
+import {
+  useCreateDogSupplement,
+  useDeleteDogSupplement,
+  useUpdateDogSupplement,
+} from '@/hooks/use-dog-supplements'
+import type { Dog, DogSupplement, Supplement, SupplementFrequency } from '@/api/types'
 
-const schema = z.object({
-  dogSlug: z.string().min(1, 'Pick a dog.'),
-  supplement_id: z.coerce.number<number>().min(1, 'Pick a supplement.'),
-  dose: z.coerce.number<number>().min(0, 'Dose must be 0 or more.'),
-  unit: z.string().min(1, 'Unit is required.'),
-  times: z.array(z.string()),
-  notes: z.string().optional().default(''),
-})
+const FREQUENCY_OPTIONS: { value: SupplementFrequency; label: string }[] = [
+  { value: 'as_needed', label: 'As needed' },
+  { value: 'daily', label: 'Every day' },
+  { value: 'interval', label: 'Every N days' },
+]
+
+const schema = z
+  .object({
+    dogSlug: z.string().min(1, 'Pick a dog.'),
+    supplement_id: z.coerce.number<number>().min(1, 'Pick a supplement.'),
+    dose: z.coerce.number<number>().min(0, 'Dose must be 0 or more.'),
+    unit: z.string().min(1, 'Unit is required.'),
+    frequency: z.enum(['as_needed', 'daily', 'interval']),
+    interval_days: z.coerce.number<number>().optional().default(0),
+    start_date: z.string().optional().default(''),
+    times: z.array(z.string()),
+    notes: z.string().optional().default(''),
+  })
+  .refine(data => data.frequency !== 'interval' || data.interval_days >= 2, {
+    message: 'Interval must be 2 or more days.',
+    path: ['interval_days'],
+  })
+  .refine(data => data.frequency !== 'interval' || data.interval_days <= 365, {
+    message: 'Interval must be 365 days or fewer.',
+    path: ['interval_days'],
+  })
+  .refine(data => data.frequency !== 'interval' || data.start_date, {
+    message: 'Start date is required for interval schedules.',
+    path: ['start_date'],
+  })
 
 type AssignmentFormValues = z.infer<typeof schema>
 
@@ -66,19 +92,22 @@ export function AssignmentSheet({
   const { data: supplements } = useSupplements()
   const { notify } = useNotification()
 
-  const dogSlug = dog?.slug ?? ''
   const isEdit = !!assignment
 
-  const createAssignment = useCreateDogSupplement(dogSlug)
-  const updateAssignment = useUpdateDogSupplement(dogSlug, assignment?.id ?? 0)
+  const createAssignment = useCreateDogSupplement()
+  const updateAssignment = useUpdateDogSupplement(assignment?.id ?? 0)
+  const deleteAssignment = useDeleteDogSupplement(dog?.slug ?? '')
 
   const form = useForm<z.input<typeof schema>, unknown, AssignmentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      dogSlug: dogSlug,
+      dogSlug: dog?.slug ?? '',
       supplement_id: 0,
       dose: 0,
       unit: '',
+      frequency: 'as_needed',
+      interval_days: 0,
+      start_date: '',
       times: [],
       notes: '',
     },
@@ -89,24 +118,38 @@ export function AssignmentSheet({
 
     const firstSupplement = supplements?.[0]
     form.reset({
-      dogSlug: dogSlug,
+      dogSlug: dog?.slug ?? '',
       supplement_id: assignment?.supplement_id ?? supplement?.id ?? firstSupplement?.id ?? 0,
       dose: assignment ? Number(assignment.dose) : 1,
       unit: assignment?.unit ?? supplement?.default_unit ?? firstSupplement?.default_unit ?? '',
+      frequency: assignment?.frequency ?? 'as_needed',
+      interval_days: assignment?.interval_days ?? 0,
+      start_date: assignment?.start_date ?? '',
       times: assignment?.times ?? [],
       notes: assignment?.notes ?? '',
     })
-  }, [open, assignment, supplement, dogSlug, supplements, form])
+  }, [open, assignment, supplement, dog?.slug, supplements, form])
 
-  const selectedDog = dog ?? allDogs?.[0]
+  const watchedDogSlug = useWatch({ control: form.control, name: 'dogSlug' })
+  const watchedFrequency = useWatch({ control: form.control, name: 'frequency' })
+  const selectedDog = dog ?? allDogs?.find(d => d.slug === watchedDogSlug)
+  const noDogSelected = !dog && !watchedDogSlug
+  const showTimes = watchedFrequency === 'daily' || watchedFrequency === 'interval'
+  const showInterval = watchedFrequency === 'interval'
 
   function onSubmit(values: AssignmentFormValues) {
-    const slug = values.dogSlug
+    // react-hook-form keeps the values of unmounted fields, so times entered
+    // before switching to "As needed" are still in the form state.
+    const usesTimes = values.frequency === 'daily' || values.frequency === 'interval'
     const payload = {
+      dogSlug: values.dogSlug,
       supplement_id: values.supplement_id,
       dose: values.dose,
       unit: values.unit,
-      times: values.times.length > 0 ? values.times : null,
+      frequency: values.frequency,
+      interval_days: values.frequency === 'interval' ? values.interval_days : null,
+      start_date: values.frequency === 'interval' ? values.start_date || null : null,
+      times: usesTimes && values.times.length > 0 ? values.times : null,
       notes: values.notes?.trim() || null,
     }
 
@@ -116,16 +159,25 @@ export function AssignmentSheet({
         onError: () => notify('Failed to update assignment.'),
       })
     } else {
-      createAssignment.mutate(
-        { ...payload, supplement_id: values.supplement_id },
-        {
-          onSuccess: () => onOpenChange(false),
-          onError: () => notify('Failed to assign supplement.'),
-        }
-      )
+      createAssignment.mutate(payload, {
+        onSuccess: () => onOpenChange(false),
+        onError: () => notify('Failed to assign supplement.'),
+      })
     }
-    void slug
   }
+
+  function handleRemove() {
+    if (!assignment) return
+    const supplementName = assignment.supplement_name ?? 'this supplement'
+    if (!window.confirm(`Remove ${supplementName} from ${dog?.name ?? 'this dog'}?`)) return
+    deleteAssignment.mutate(assignment.id, {
+      onSuccess: () => onOpenChange(false),
+      onError: () => notify('Failed to remove assignment.'),
+    })
+  }
+
+  const isPending =
+    createAssignment.isPending || updateAssignment.isPending || deleteAssignment.isPending
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -246,19 +298,85 @@ export function AssignmentSheet({
 
             <FormField
               control={form.control}
-              name="times"
+              name="frequency"
               render={({ field }) => (
                 <FormItem>
-                  <FeedTimesField
-                    value={field.value}
-                    onChange={field.onChange}
-                    label="Times to give"
-                    description="Leave empty for as-needed dosing."
-                  />
+                  <FormLabel>Schedule</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {FREQUENCY_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {showInterval && (
+              <div className="grid grid-cols-2 gap-2">
+                <FormField
+                  control={form.control}
+                  name="interval_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Every N days</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="2"
+                          step="1"
+                          className="font-mono"
+                          {...field}
+                          value={Number.isNaN(field.value) ? '' : field.value}
+                          onChange={e => field.onChange(e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="start_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {showTimes && (
+              <FormField
+                control={form.control}
+                name="times"
+                render={({ field }) => (
+                  <FormItem>
+                    <FeedTimesField
+                      value={field.value}
+                      onChange={field.onChange}
+                      label="Times to give"
+                      description="Optional. Leave empty for a once-a-day reminder with no specific time."
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -274,6 +392,17 @@ export function AssignmentSheet({
             />
 
             <SheetFooter>
+              {isEdit && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="xl"
+                  onClick={handleRemove}
+                  disabled={isPending}
+                >
+                  Remove
+                </Button>
+              )}
               <Button type="button" variant="outline" size="xl" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
@@ -281,9 +410,13 @@ export function AssignmentSheet({
                 type="submit"
                 size="xl"
                 className="flex-1"
-                disabled={createAssignment.isPending || updateAssignment.isPending}
+                disabled={noDogSelected || isPending}
               >
-                {isEdit ? 'Save' : `Assign to ${selectedDog?.name ?? 'dog'}`}
+                {isEdit
+                  ? 'Save'
+                  : noDogSelected
+                    ? 'Select a dog'
+                    : `Assign to ${selectedDog?.name ?? 'dog'}`}
               </Button>
             </SheetFooter>
           </form>

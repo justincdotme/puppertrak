@@ -40,17 +40,17 @@ class SupplementSeeder extends Seeder
 
         DogSupplement::updateOrCreate(
             ['dog_id' => $maple->id, 'supplement_id' => $fishOil->id],
-            ['dose' => '1.00', 'unit' => 'pump', 'times' => ['07:00']],
+            ['dose' => '1.00', 'unit' => 'pump', 'times' => ['07:00'], 'frequency' => 'daily'],
         );
 
         DogSupplement::updateOrCreate(
             ['dog_id' => $maple->id, 'supplement_id' => $cosequin->id],
-            ['dose' => '1.00', 'unit' => 'chew', 'times' => ['18:00']],
+            ['dose' => '1.00', 'unit' => 'chew', 'times' => ['18:00'], 'frequency' => 'daily'],
         );
 
         DogSupplement::updateOrCreate(
             ['dog_id' => $maple->id, 'supplement_id' => $fortiFlora->id],
-            ['dose' => '1.00', 'unit' => 'sachet', 'times' => ['07:30']],
+            ['dose' => '1.00', 'unit' => 'sachet', 'times' => ['07:30'], 'frequency' => 'daily'],
         );
 
         DogSupplement::updateOrCreate(

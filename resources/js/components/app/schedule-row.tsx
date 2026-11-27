@@ -14,7 +14,7 @@ export interface PortionData {
 }
 
 interface ScheduleRowProps {
-  time: string
+  time: string | null
   status: FeedingScheduleStatus
   label: string
   sublabel: string
@@ -22,6 +22,7 @@ interface ScheduleRowProps {
   onClick?: () => void
   portions?: PortionData[]
   onPortionClick?: (logId: number) => void
+  action?: React.ReactNode
 }
 
 function StatusIcon({ status }: { status: FeedingScheduleStatus }) {
@@ -48,6 +49,7 @@ function StatusIcon({ status }: { status: FeedingScheduleStatus }) {
       return (
         <span className="block size-7 rounded-full border-[1.5px] border-dashed border-input opacity-50" />
       )
+    case 'due':
     case 'upcoming':
     default:
       return (
@@ -104,6 +106,7 @@ export function ScheduleRow({
   onClick,
   portions,
   onPortionClick,
+  action,
 }: ScheduleRowProps) {
   const interactive = !!onClick
   const untracked = status === 'untracked'
@@ -141,9 +144,12 @@ export function ScheduleRow({
           </>
         )}
       </span>
-      <span className="flex-none font-mono text-sm whitespace-nowrap">
-        {formatScheduledTime(time)}
-      </span>
+      {time && (
+        <span className="flex-none font-mono text-sm whitespace-nowrap">
+          {formatScheduledTime(time)}
+        </span>
+      )}
+      {action}
     </Card>
   )
 }
