@@ -95,6 +95,21 @@ describe('dogToFormValues', () => {
     expect(values.owner_name).toBe('Justin Christenson')
   })
 
+  it('shows the current age rather than the age as first entered', () => {
+    const values = dogToFormValues({ ...maple, date_of_birth: null, age_years: 7, age: 8 })
+    expect(values.age_years).toBe('8')
+  })
+
+  it('leaves the age field as stored when a birth date drives the age', () => {
+    const values = dogToFormValues({
+      ...maple,
+      date_of_birth: '2020-04-12',
+      age_years: null,
+      age: 6,
+    })
+    expect(values.age_years).toBe('')
+  })
+
   it('defaults empty strings for null fields', () => {
     const dogWithNulls: Dog = {
       ...maple,

@@ -7,9 +7,11 @@ namespace App\Models;
 use Database\Factories\DogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -17,6 +19,7 @@ use Illuminate\Support\Str;
     'breed',
     'date_of_birth',
     'age_years',
+    'age_years_recorded_on',
     'sex',
     'is_neutered_or_spayed',
     'weight',
@@ -58,6 +61,12 @@ class Dog extends Model
     {
         static::creating(function (Dog $dog): void {
             $dog->slug = $dog->slug ?: static::uniqueSlugFor($dog->name);
+        });
+
+        static::saving(function (Dog $dog): void {
+            if ($dog->isDirty('age_years')) {
+                $dog->stampAgeYears();
+            }
         });
 
         static::updating(function (Dog $dog): void {
@@ -157,12 +166,69 @@ class Dog extends Model
     }
 
     /**
+     * Re-saving the age the edit form displayed must not move the anchor, or the
+     * dog would lose the part of a year since the age was first recorded.
+     *
+     * @return void
+     */
+    protected function stampAgeYears(): void
+    {
+        if ($this->age_years === null) {
+            $this->age_years_recorded_on = null;
+
+            return;
+        }
+
+        $originalAge        = $this->getOriginal('age_years');
+        $originalRecordedOn = $this->getOriginal('age_years_recorded_on');
+
+        $unchanged = $originalAge !== null
+            && $originalRecordedOn !== null
+            && (int) $originalAge + (int) Carbon::parse($originalRecordedOn)->diffInYears(today()) === (int) $this->age_years;
+
+        if ($unchanged) {
+            $this->age_years             = $originalAge;
+            $this->age_years_recorded_on = $originalRecordedOn;
+
+            return;
+        }
+
+        $this->age_years_recorded_on = today();
+    }
+
+    /**
+     * A real birth date wins; otherwise the recorded age grows by the full years
+     * since it was entered.
+     *
+     * @return Attribute<int|null, never>
+     */
+    protected function age(): Attribute
+    {
+        return Attribute::get(function (): ?int {
+            if ($this->date_of_birth !== null) {
+                return $this->date_of_birth->age;
+            }
+
+            if ($this->age_years === null) {
+                return null;
+            }
+
+            if ($this->age_years_recorded_on === null) {
+                return $this->age_years;
+            }
+
+            return $this->age_years + (int) $this->age_years_recorded_on->diffInYears(today());
+        });
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
             'date_of_birth'         => 'date',
+            'age_years_recorded_on' => 'date',
             'is_neutered_or_spayed' => 'boolean',
             'weight'                => 'decimal:2',
             'rabies_vaccine_date'   => 'date',
